@@ -9,7 +9,7 @@ import ru.ads_online.pojo.dto.user.Role;
 @Table(name = "`user`")
 @Data
 @Accessors(chain = true)
-public class User {
+public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;

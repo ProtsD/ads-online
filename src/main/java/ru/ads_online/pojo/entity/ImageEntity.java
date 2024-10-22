@@ -6,7 +6,7 @@ import lombok.Data;
 @Entity
 @Table(name = "image")
 @Data
-public class Image {
+public class ImageEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)

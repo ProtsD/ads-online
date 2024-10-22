@@ -8,7 +8,7 @@ import lombok.experimental.Accessors;
 @Data
 @Table(name = "ad")
 @Accessors(chain = true)
-public class Ad {
+public class AdEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -28,5 +28,5 @@ public class Ad {
 
     @ManyToOne
     @JoinColumn(name = "author_id", referencedColumnName = "id")
-    private User author;
+    private UserEntity author;
 }
