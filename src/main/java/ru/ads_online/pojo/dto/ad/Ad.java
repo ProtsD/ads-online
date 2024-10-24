@@ -8,7 +8,7 @@ import lombok.experimental.Accessors;
 public class Ad {
     private int author;
     private String image;
-    private int pk;
+    private int id;
     private int price;
     private String title;
 }

@@ -3,9 +3,7 @@ package ru.ads_online.pojo.dto.user;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.experimental.Accessors;
-import org.springframework.stereotype.Component;
 
-@Component
 @Data
 @Accessors(chain = true)
 public class NewPassword {

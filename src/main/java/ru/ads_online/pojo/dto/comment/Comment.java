@@ -10,6 +10,6 @@ public class Comment {
     private String authorImage;
     private String authorFirstName;
     private long createdAt;
-    private int pk;
+    private int id;
     private String text;
 }

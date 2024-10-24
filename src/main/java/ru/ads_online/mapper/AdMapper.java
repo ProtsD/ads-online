@@ -31,7 +31,7 @@ public class AdMapper {
         return new Ad()
                 .setAuthor(adEntity.getAuthor().getId())
                 .setImage(adEntity.getImage())
-                .setPk(adEntity.getId())
+                .setId(adEntity.getId())
                 .setPrice(adEntity.getPrice())
                 .setTitle(adEntity.getTitle());
     }
@@ -42,7 +42,7 @@ public class AdMapper {
         }
 
         return new ExtendedAd()
-                .setPk(adEntity.getId())
+                .setId(adEntity.getId())
                 .setAuthorFirstName(adEntity.getAuthor().getFirstName())
                 .setAuthorLastName(adEntity.getAuthor().getLastName())
                 .setDescription(adEntity.getDescription())

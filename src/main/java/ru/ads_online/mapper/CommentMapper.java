@@ -30,7 +30,7 @@ public class CommentMapper {
         return new Comment()
                 .setAuthor(commentEntity.getAuthor().getId())
                 .setText(commentEntity.getText())
-                .setPk(commentEntity.getId())
+                .setId(commentEntity.getId())
                 .setCreatedAt(commentEntity.getCreatedAt())
                 .setAuthorImage(commentEntity.getAuthor().getImage())
                 .setAuthorFirstName(commentEntity.getAuthor().getFirstName());

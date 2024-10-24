@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 import ru.ads_online.pojo.dto.user.UpdateUser;
 import ru.ads_online.pojo.dto.user.User;
 import ru.ads_online.pojo.entity.UserEntity;
+import ru.ads_online.pojo.dto.user.UserDetails;
 
 @Component
 public class UserMapper {
@@ -34,5 +35,12 @@ public class UserMapper {
                 .setFirstName(userEntity.getFirstName())
                 .setLastName(userEntity.getLastName())
                 .setPhone(userEntity.getPhone());
+    }
+
+    public UserDetails toUserDetails(UserEntity userEntity) {
+        return new UserDetails()
+                .setUsername(userEntity.getUsername())
+                .setPassword(userEntity.getPassword())
+                .setRole(userEntity.getRole());
     }
 }
