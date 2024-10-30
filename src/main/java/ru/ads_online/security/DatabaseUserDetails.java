@@ -1,26 +1,22 @@
 package ru.ads_online.security;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.stereotype.Component;
-import ru.ads_online.pojo.dto.user.UserDetails;
+import ru.ads_online.pojo.entity.UserEntity;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 
-@Component
+@RequiredArgsConstructor
 public class DatabaseUserDetails implements org.springframework.security.core.userdetails.UserDetails {
-    private UserDetails userDetails = null;
-
-    public void setUser(UserDetails userDetails) {
-        this.userDetails = userDetails;
-    }
+    private final UserEntity user;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Optional.ofNullable(userDetails)
-                .map(UserDetails::getRole)
+        return Optional.ofNullable(user)
+                .map(UserEntity::getRole)
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
                 .map(Collections::singleton)
                 .orElseGet(Collections::emptySet);
@@ -28,20 +24,20 @@ public class DatabaseUserDetails implements org.springframework.security.core.us
 
     @Override
     public String getPassword() {
-        return Optional.ofNullable(userDetails)
-                .map(UserDetails::getPassword)
+        return Optional.ofNullable(user)
+                .map(UserEntity::getPassword)
                 .orElse(null);
     }
 
     @Override
     public String getUsername() {
-        return Optional.ofNullable(userDetails)
-                .map(UserDetails::getUsername)
+        return Optional.ofNullable(user)
+                .map(UserEntity::getUsername)
                 .orElse(null);
     }
 
-    public UserDetails getUserDetails() {
-        return userDetails;
+    public UserEntity getUser() {
+        return user;
     }
 
     @Override

@@ -6,7 +6,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import ru.ads_online.mapper.UserMapper;
 import ru.ads_online.pojo.dto.user.Register;
 import ru.ads_online.pojo.entity.UserEntity;
 import ru.ads_online.repository.UserRepository;
@@ -17,8 +16,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class DatabaseUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
-    private final UserMapper userMapper;
-    private final DatabaseUserDetails databaseUserDetails;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -27,8 +24,7 @@ public class DatabaseUserDetailsService implements UserDetailsService {
                 .orElseThrow(
                         () -> new UsernameNotFoundException("User name " + username + " not found")
                 );
-        databaseUserDetails.setUser(userMapper.toUserDetails(userEntity));
-        return databaseUserDetails;
+        return new DatabaseUserDetails(userEntity);
     }
 
     public boolean userExists(String username) {
