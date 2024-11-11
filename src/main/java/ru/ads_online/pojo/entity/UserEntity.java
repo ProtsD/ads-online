@@ -12,7 +12,7 @@ import ru.ads_online.pojo.dto.user.Role;
 public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private int id;
     @Column(name = "username", nullable = false, unique = true)
     private String username;
     @Column(name = "password", nullable = false)

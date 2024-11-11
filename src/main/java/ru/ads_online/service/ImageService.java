@@ -6,13 +6,13 @@ public interface ImageService {
     String IMAGE_URL_PREFIX = "/images/";
 
 
-    ImageEntity getImage(Integer id);
+    ImageEntity getImage(int id);
 
     ImageEntity uploadImage(byte[] image);
 
 
-    ImageEntity updateImage(Integer id, byte[] image);
+    ImageEntity updateImage(int id, byte[] image);
 
 
-    void deleteImage(Integer id);
+    void deleteImage(int id);
 }

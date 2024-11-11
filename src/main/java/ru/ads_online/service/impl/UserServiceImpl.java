@@ -68,7 +68,7 @@ public class UserServiceImpl implements UserService {
             if (currentUser.getImage() == null) {
                 imageEntity = imageService.uploadImage(imageBytes);
             } else {
-                Integer imageId = Integer.valueOf(currentUser.getImage().replaceAll(ImageService.IMAGE_URL_PREFIX, ""));
+                int imageId =  Integer.parseInt(currentUser.getImage().replaceAll(ImageService.IMAGE_URL_PREFIX, ""));
                 imageEntity = imageService.updateImage(imageId, imageBytes);
             }
 

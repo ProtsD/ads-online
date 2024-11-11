@@ -53,13 +53,16 @@ public class AdMapper {
                 .setTitle(adEntity.getTitle());
     }
 
-    public Ads toAds(List<Ad> adList) {
+    public Ads toAds(List<AdEntity> adList) {
         if (adList == null) {
             return null;
         }
+        List<Ad> adResults = adList.stream()
+                .map(this::toAd)
+                .toList();
 
         return new Ads()
                 .setCount(adList.size())
-                .setResults(adList);
+                .setResults(adResults);
     }
 }
