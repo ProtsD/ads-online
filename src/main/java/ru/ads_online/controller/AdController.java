@@ -1,7 +1,6 @@
 package ru.ads_online.controller;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +16,7 @@ import ru.ads_online.pojo.dto.ad.Ad;
 import ru.ads_online.pojo.dto.ad.Ads;
 import ru.ads_online.pojo.dto.ad.CreateOrUpdateAd;
 import ru.ads_online.pojo.dto.ad.ExtendedAd;
-import ru.ads_online.security.DatabaseUserDetails;
+import ru.ads_online.security.UserPrincipal;
 import ru.ads_online.service.AdService;
 
 import java.net.URI;
@@ -41,7 +40,7 @@ public class AdController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Ad> addAd(@AuthenticationPrincipal DatabaseUserDetails userDetails,
+    public ResponseEntity<Ad> addAd(@AuthenticationPrincipal UserPrincipal userDetails,
                                     @RequestPart @Valid CreateOrUpdateAd properties,
                                     @RequestPart MultipartFile image) {
         String username = userDetails.getUser().getUsername();
@@ -68,7 +67,7 @@ public class AdController {
 
     @PreAuthorize("@authorizationService.hasPermissionForAd(#userDetails, #id)")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAd(@AuthenticationPrincipal DatabaseUserDetails userDetails,
+    public ResponseEntity<Void> deleteAd(@AuthenticationPrincipal UserPrincipal userDetails,
                                          @Positive @PathVariable(name = "id") int id) {
 
         String username = userDetails.getUser().getUsername();
@@ -82,7 +81,7 @@ public class AdController {
 
     @PreAuthorize("@authorizationService.hasPermissionForAd(#userDetails, #id)")
     @PatchMapping("/{id}")
-    public ResponseEntity<Ad> updateAd(@AuthenticationPrincipal DatabaseUserDetails userDetails,
+    public ResponseEntity<Ad> updateAd(@AuthenticationPrincipal UserPrincipal userDetails,
                                        @PathVariable(name = "id") int id,
                                        @RequestBody @Valid CreateOrUpdateAd properties) {
         String username = userDetails.getUser().getUsername();
@@ -95,7 +94,7 @@ public class AdController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<Ads> getUserAds(@AuthenticationPrincipal DatabaseUserDetails userDetails) {
+    public ResponseEntity<Ads> getUserAds(@AuthenticationPrincipal UserPrincipal userDetails) {
         String username = userDetails.getUser().getUsername();
         log.info("Received request to get all ads of user={}", username);
 
@@ -107,7 +106,7 @@ public class AdController {
 
     @PreAuthorize("@authorizationService.hasPermissionForAd(#userDetails, #id)")
     @PatchMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> updateAdImage(@AuthenticationPrincipal DatabaseUserDetails userDetails,
+    public ResponseEntity<String> updateAdImage(@AuthenticationPrincipal UserPrincipal userDetails,
                                                 @PathVariable(name = "id") int id,
                                                 @RequestParam MultipartFile image) {
         String username = userDetails.getUser().getUsername();

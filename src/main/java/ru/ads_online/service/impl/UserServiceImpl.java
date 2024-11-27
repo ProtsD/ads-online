@@ -14,7 +14,7 @@ import ru.ads_online.pojo.dto.user.User;
 import ru.ads_online.pojo.entity.ImageEntity;
 import ru.ads_online.pojo.entity.UserEntity;
 import ru.ads_online.repository.UserRepository;
-import ru.ads_online.security.DatabaseUserDetails;
+import ru.ads_online.security.UserPrincipal;
 import ru.ads_online.service.ImageService;
 import ru.ads_online.service.UserService;
 
@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void setPassword(Authentication authentication, NewPassword newPassword) {
-        UserEntity currentUser = ((DatabaseUserDetails) authentication.getPrincipal()).getUser();
+        UserEntity currentUser = ((UserPrincipal) authentication.getPrincipal()).getUser();
         if (passwordEncoder.matches(newPassword.getCurrentPassword(), currentUser.getPassword())) {
             currentUser.setPassword(passwordEncoder.encode(newPassword.getNewPassword()));
             userRepository.save(currentUser);
@@ -42,13 +42,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getData(Authentication authentication) {
-        UserEntity currentUser = ((DatabaseUserDetails) authentication.getPrincipal()).getUser();
+        UserEntity currentUser = ((UserPrincipal) authentication.getPrincipal()).getUser();
         return userMapper.toUser(currentUser);
     }
 
     @Override
     public UpdateUser updateData(Authentication authentication, UpdateUser updateUser) {
-        UserEntity currentUser = ((DatabaseUserDetails) authentication.getPrincipal())
+        UserEntity currentUser = ((UserPrincipal) authentication.getPrincipal())
                 .getUser()
                 .setFirstName(updateUser.getFirstName())
                 .setLastName(updateUser.getLastName())
@@ -59,7 +59,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void updateImage(Authentication authentication, MultipartFile image) {
-        UserEntity currentUser = ((DatabaseUserDetails) authentication.getPrincipal()).getUser();
+        UserEntity currentUser = ((UserPrincipal) authentication.getPrincipal()).getUser();
         ImageEntity imageEntity;
 
         try {

@@ -49,21 +49,10 @@ public class AdsOnlineExceptionHandler {
 
         Map<String, Object> errorBody = Map.of(
                 "status", HttpStatus.BAD_REQUEST.value(),
-                "message", message
+                "message", message != null ? message : DEFAULT_ERROR_MESSAGE
         );
 
         log.warn("Validation error: {}", message);
         return ResponseEntity.badRequest().body(errorBody);
-    }
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleException(Exception exception) {
-        String message = exception.getMessage() != null ? exception.getMessage() : DEFAULT_ERROR_MESSAGE;
-        Map<String, Object> errorBody = Map.of(
-                "status", HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "message", message
-        );
-
-        log.error("Unexpected error: {}", message, exception);
-        return ResponseEntity.internalServerError().body(errorBody);
     }
 }

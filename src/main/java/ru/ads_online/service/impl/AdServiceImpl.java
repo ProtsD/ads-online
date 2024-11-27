@@ -17,14 +17,13 @@ import ru.ads_online.pojo.entity.AdEntity;
 import ru.ads_online.pojo.entity.ImageEntity;
 import ru.ads_online.pojo.entity.UserEntity;
 import ru.ads_online.repository.AdRepository;
-import ru.ads_online.security.DatabaseUserDetails;
+import ru.ads_online.security.UserPrincipal;
 import ru.ads_online.service.AdService;
 import ru.ads_online.service.ImageService;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 @Service
 @RequiredArgsConstructor
@@ -37,14 +36,13 @@ public class AdServiceImpl implements AdService {
     @Transactional(readOnly = true)
     @Override
     public Ads getAllAds() {
-        List<AdEntity> adList = StreamSupport.stream(adRepository.findAll().spliterator(), false)
-                .collect(Collectors.toList());
+        List<AdEntity> adList = new ArrayList<>(adRepository.findAll());
         return adMapper.toAds(adList);
     }
 
     @Transactional
     @Override
-    public Ad addAd(DatabaseUserDetails userDetails, CreateOrUpdateAd adBody, MultipartFile image) {
+    public Ad addAd(UserPrincipal userDetails, CreateOrUpdateAd adBody, MultipartFile image) {
         UserEntity author = userDetails.getUser();
 
         if (image == null || image.isEmpty()) {
@@ -103,7 +101,7 @@ public class AdServiceImpl implements AdService {
 
     @Transactional(readOnly = true)
     @Override
-    public Ads getUserAds(DatabaseUserDetails userDetails) {
+    public Ads getUserAds(UserPrincipal userDetails) {
         int currentUserId = userDetails.getUser().getId();
         List<AdEntity> adList = adRepository.findAllByAuthorId(currentUserId)
                 .orElseThrow(() -> {

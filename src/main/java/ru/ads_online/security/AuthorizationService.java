@@ -13,7 +13,7 @@ import ru.ads_online.repository.AdRepository;
 public class AuthorizationService {
     private final AdRepository adRepository;
 
-    public boolean hasPermissionForAd(DatabaseUserDetails userDetails, Integer adId) {
+    public boolean hasPermissionForAd(UserPrincipal userDetails, Integer adId) {
         UserEntity currentUser = userDetails.getUser();
         AdEntity currentAd = adRepository.findById(adId).orElseThrow(() -> new NotFoundException("Ad with id=" + adId + " not found."));
 

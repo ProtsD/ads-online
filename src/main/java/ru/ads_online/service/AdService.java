@@ -5,12 +5,12 @@ import ru.ads_online.pojo.dto.ad.Ad;
 import ru.ads_online.pojo.dto.ad.Ads;
 import ru.ads_online.pojo.dto.ad.CreateOrUpdateAd;
 import ru.ads_online.pojo.dto.ad.ExtendedAd;
-import ru.ads_online.security.DatabaseUserDetails;
+import ru.ads_online.security.UserPrincipal;
 
 public interface AdService {
     Ads getAllAds();
 
-    Ad addAd(DatabaseUserDetails userDetails, CreateOrUpdateAd properties, MultipartFile image);
+    Ad addAd(UserPrincipal userDetails, CreateOrUpdateAd properties, MultipartFile image);
 
     ExtendedAd getAd(int id);
 
@@ -18,7 +18,7 @@ public interface AdService {
 
     Ad updateAd(int id, CreateOrUpdateAd properties);
 
-    Ads getUserAds(DatabaseUserDetails userDetails);
+    Ads getUserAds(UserPrincipal userDetails);
 
     String updateAdImage(int id, MultipartFile image);
 }

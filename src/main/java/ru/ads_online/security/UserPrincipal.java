@@ -1,16 +1,19 @@
 package ru.ads_online.security;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import ru.ads_online.pojo.entity.UserEntity;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 
+@Getter
 @RequiredArgsConstructor
-public class DatabaseUserDetails implements org.springframework.security.core.userdetails.UserDetails {
+public class UserPrincipal implements UserDetails {
     private final UserEntity user;
 
     @Override
@@ -34,10 +37,6 @@ public class DatabaseUserDetails implements org.springframework.security.core.us
         return Optional.ofNullable(user)
                 .map(UserEntity::getUsername)
                 .orElse(null);
-    }
-
-    public UserEntity getUser() {
-        return user;
     }
 
     @Override

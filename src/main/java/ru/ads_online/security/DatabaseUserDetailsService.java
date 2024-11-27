@@ -24,7 +24,7 @@ public class DatabaseUserDetailsService implements UserDetailsService {
                 .orElseThrow(
                         () -> new UsernameNotFoundException("User name " + username + " not found")
                 );
-        return new DatabaseUserDetails(userEntity);
+        return new UserPrincipal(userEntity);
     }
 
     public boolean userExists(String username) {
