@@ -10,12 +10,13 @@ import ru.ads_online.pojo.entity.UserEntity;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class CommentMapper {
     public CommentEntity toCommentEntity(CreateOrUpdateComment createOrUpdateComment, UserEntity userEntity, AdEntity adEntity) {
         Date date = new Date();
-        if (userEntity == null || adEntity == null) {
+        if (Optional.ofNullable(userEntity).isEmpty() || Optional.ofNullable(adEntity).isEmpty()) {
             return null;
         } else {
             return new CommentEntity()
