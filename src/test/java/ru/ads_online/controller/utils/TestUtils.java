@@ -1,21 +1,24 @@
 package ru.ads_online.controller.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import ru.ads_online.pojo.dto.ad.CreateOrUpdateAd;
+import ru.ads_online.pojo.dto.comment.CreateOrUpdateComment;
 import ru.ads_online.pojo.dto.user.Role;
 import ru.ads_online.pojo.entity.AdEntity;
+import ru.ads_online.pojo.entity.CommentEntity;
 import ru.ads_online.pojo.entity.ImageEntity;
 import ru.ads_online.pojo.entity.UserEntity;
 import ru.ads_online.security.UserPrincipal;
 import ru.ads_online.service.ImageService;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -26,9 +29,10 @@ public class TestUtils {
     static final int lastNameMinSize = 2, lastNameMaxSize = 16;
     static final int titleMinSize = 4, titleMaxSize = 32;
     static final int descriptionMinSize = 8, descriptionMaxSize = 64;
+    static final int commentMinSize = 8, commentMaxSize = 64;
+
     static final int maxPrice = 10000000;
     static final int maxImageSize = 10485760;
-    static final Faker fakerRu = new Faker(Locale.forLanguageTag("ru-RU"));
     static final Faker fakerEn = new Faker(Locale.forLanguageTag("en-US"));
     static final Random random = new Random();
 
@@ -51,10 +55,8 @@ public class TestUtils {
                 .toList();
     }
 
-    public static UserEntity createAdmin(List<UserEntity> users) {
-        int randomUser = new Random().nextInt(users.size());
-        users.get(randomUser).setRole(Role.ADMIN);
-        return users.get(randomUser);
+    public static UserEntity createAdmin(PasswordEncoder passwordEncoder) {
+        return createUniqueUsers(1, passwordEncoder).getFirst().setRole(Role.ADMIN);
     }
 
     public static UserEntity getRandomUserFrom(List<UserEntity> users) {
@@ -71,13 +73,13 @@ public class TestUtils {
     }
 
     public static List<String> getPasswords(int quantity) {
-        return Stream.generate(() -> fakerRu.internet().password(passwordMinSize, passwordMaxSize))
+        return Stream.generate(() -> fakerEn.internet().password(passwordMinSize, passwordMaxSize))
                 .limit(quantity)
                 .toList();
     }
 
     public static List<String> getFirstNames(int quantity) {
-        return Stream.generate(() -> fakerRu.name().firstName())
+        return Stream.generate(() -> fakerEn.name().firstName())
                 .filter(firstName -> firstName.length() >= firstNameMinSize)
                 .map(firstName -> firstName.substring(0, Math.min(firstName.length(), firstNameMaxSize)))
                 .limit(quantity)
@@ -85,7 +87,7 @@ public class TestUtils {
     }
 
     public static List<String> getLastNames(int Quantity) {
-        return Stream.generate(() -> fakerRu.name().lastName())
+        return Stream.generate(() -> fakerEn.name().lastName())
                 .filter(lastName -> lastName.length() >= lastNameMinSize)
                 .map(lastName -> lastName.substring(0, Math.min(lastName.length(), lastNameMaxSize)))
                 .limit(Quantity)
@@ -93,7 +95,7 @@ public class TestUtils {
     }
 
     public static List<String> getPhones(int quantity) {
-        return Stream.generate(() -> fakerRu.phoneNumber().phoneNumber())
+        return Stream.generate(() -> fakerEn.phoneNumber().phoneNumber())
                 .distinct()
                 .limit(quantity)
                 .toList();
@@ -121,7 +123,7 @@ public class TestUtils {
                         .setTitle(titles.get(i))
                         .setDescription(description.get(i))
                         .setImage(image.get(i))
-                        .setAuthor(users.get(random.nextInt(users.size()))))
+                        .setAuthor(users.get(random.nextInt(users.size() - 1))))
                 .toList();
     }
 
@@ -136,7 +138,7 @@ public class TestUtils {
     }
 
     public static List<String> getTitle(int quantity) {
-        return Stream.generate(() -> fakerRu.commerce().productName())
+        return Stream.generate(() -> fakerEn.commerce().productName())
                 .filter(title -> title.length() >= titleMinSize && title.length() <= titleMaxSize)
                 .distinct()
                 .limit(quantity)
@@ -144,7 +146,7 @@ public class TestUtils {
     }
 
     public static List<String> getDescriptions(int maxWords, int quantity) {
-        return Stream.generate(() -> fakerRu.lorem().sentence(maxWords))
+        return Stream.generate(() -> fakerEn.lorem().sentence(maxWords))
                 .filter(desc -> desc.length() >= descriptionMinSize)
                 .map(s -> s.substring(0, Math.min(s.length(), descriptionMaxSize)))
                 .distinct()
@@ -168,6 +170,62 @@ public class TestUtils {
         return randomBytes;
     }
 
+    public static AdEntity getRandomAdFrom(List<AdEntity> ads) {
+        return ads.get(random.nextInt(ads.size()));
+    }
+
+    public static int getRandomNonExistentId(JpaRepository<?, Integer> repository) {
+        int nonExistentId;
+        do {
+            nonExistentId = random.nextInt(Integer.MAX_VALUE);
+        } while (repository.existsById(nonExistentId));
+        return nonExistentId;
+    }
+
+    public static List<CommentEntity> createComments(int numberOfComments, List<UserEntity> users, List<AdEntity> ads) {
+        List<String> text = getCommentsText(10, numberOfComments);
+        Date commentCreationDate = new Date();
+        return IntStream.range(0, numberOfComments)
+                .mapToObj(i -> new CommentEntity()
+                        .setCreatedAt(commentCreationDate.getTime())
+                        .setText(text.get(i))
+                        .setAdEntity(ads.get(random.nextInt(ads.size() - 1)))
+                        .setAuthor(users.get(random.nextInt(users.size() - 1))))
+                .toList();
+    }
+
+    public static List<String> getCommentsText(int maxWords, int commentCount) {
+        return Stream.generate(() -> fakerEn.lorem().sentence(maxWords))
+                .filter(s -> s.length() >= commentMinSize)
+                .map(s -> s.substring(0, Math.min(s.length(), commentMaxSize)))
+                .distinct()
+                .limit(commentCount)
+                .toList();
+    }
+
+    public static String getRandomCommentDtoJson(ObjectMapper objectMapper) throws JsonProcessingException {
+        String commentText = TestUtils.getCommentsText(10, 1).get(0);
+        CreateOrUpdateComment commentRequest = new CreateOrUpdateComment().setText(commentText);
+        return objectMapper.writeValueAsString(commentRequest);
+    }
+
+    public static CommentEntity getRandomCommentFrom(List<CommentEntity> comments) {
+        return comments.get(new Random().nextInt(comments.size()));
+    }
+
+    public static Authentication getAuthenticationFor(UserEntity userEntity) {
+        Authentication authentication = createAuthenticationTokenForUser(userEntity);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        return authentication;
+    }
+
+    public static Authentication getRandomUserAuthentication(List<UserEntity> predefinedUsers) {
+        UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
+        Authentication authentication = createAuthenticationTokenForUser(user);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        return authentication;
+    }
+
     public static Authentication createAuthenticationTokenForUser(UserEntity user) {
         if (user == null) {
             throw new IllegalArgumentException("User cannot be null for authentication");
@@ -175,10 +233,6 @@ public class TestUtils {
         UserPrincipal userPrincipal = new UserPrincipal(user);
         return new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities()
         );
-    }
-
-    public static AdEntity getRandomAdFrom(List<AdEntity> ads) {
-        return ads.get(random.nextInt(ads.size()));
     }
 
     public static int getRandomNonExistentAd(List<AdEntity> ads) {
@@ -189,5 +243,18 @@ public class TestUtils {
         } while (allIds.contains(randomNonExistentId));
 
         return randomNonExistentId;
+    }
+
+    public static <T> T findDistinctElement(List<T> list, T object) {
+        if (list == null || object == null) {
+            throw new IllegalArgumentException("List and object must not be null.");
+        }
+        if (list.isEmpty()) {
+            throw new IllegalArgumentException("List must not be empty.");
+        }
+        return list.stream()
+                .filter(o -> !o.equals(object))
+                .findAny()
+                .orElseThrow(() -> new NoSuchElementException("No distinct element found in the list."));
     }
 }

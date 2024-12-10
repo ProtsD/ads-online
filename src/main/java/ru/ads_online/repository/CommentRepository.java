@@ -1,12 +1,15 @@
 package ru.ads_online.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import ru.ads_online.pojo.dto.comment.Comment;
 import ru.ads_online.pojo.entity.CommentEntity;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface CommentRepository extends JpaRepository<CommentEntity, Integer> {
-    Optional<List<CommentEntity>> findAllByAdEntityId(int id);
+    @Query("SELECT new ru.ads_online.pojo.dto.comment.Comment(u.id, u.image, u.firstName, c.createdAt, c.id, c.text)" +
+            "FROM CommentEntity c JOIN UserEntity u on c.author = u WHERE c.adEntity.id = :id")
+    List<Comment> findAllByAdId(@Param("id") int adId);
 }

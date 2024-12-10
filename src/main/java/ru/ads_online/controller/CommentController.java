@@ -57,8 +57,8 @@ public class CommentController {
     @PreAuthorize("@authorizationService.hasPermissionForComment(#userDetails, #adId, #commentId)")
     @DeleteMapping("/{adId}/comments/{commentId}")
     public ResponseEntity<Void> deleteComment(@AuthenticationPrincipal UserPrincipal userDetails,
-                                           @PathVariable(name = "adId") @Positive int adId,
-                                           @PathVariable(name = "commentId") @Positive int commentId) {
+                                           @PathVariable @Positive int adId,
+                                           @PathVariable @Positive int commentId) {
         String username = userDetails.getUser().getUsername();
         log.info("Received request to delete comment with id={} for ad id={} from user={}", commentId, adId, username);
 

@@ -31,8 +31,10 @@ import ru.ads_online.pojo.dto.ad.Ad;
 import ru.ads_online.pojo.dto.ad.CreateOrUpdateAd;
 import ru.ads_online.pojo.dto.user.Role;
 import ru.ads_online.pojo.entity.AdEntity;
+import ru.ads_online.pojo.entity.CommentEntity;
 import ru.ads_online.pojo.entity.UserEntity;
 import ru.ads_online.repository.AdRepository;
+import ru.ads_online.repository.CommentRepository;
 import ru.ads_online.repository.ImageRepository;
 import ru.ads_online.repository.UserRepository;
 import ru.ads_online.security.UserPrincipal;
@@ -63,6 +65,8 @@ public class AdControllerTest {
     @Autowired
     private AdRepository adRepository;
     @Autowired
+    private CommentRepository commentRepository;
+    @Autowired
     private ImageRepository imageRepository;
     @Autowired
     private ImageService imageService;
@@ -80,9 +84,13 @@ public class AdControllerTest {
     private PasswordEncoder passwordEncoder;
     private final static int NUMBER_OF_TEST_ADS = 10;
     private final static int NUMBER_OF_TEST_USERS = 10;
+    private final static int NUMBER_OF_TEST_COMMENTS = NUMBER_OF_TEST_ADS * 10;
     private static UserEntity predefinedAdmin;
     private static List<UserEntity> predefinedUsers;
     private static List<AdEntity> ads;
+    private static List<CommentEntity> comments;
+    private static AdRepository adRepositoryStat;
+
 
     @DynamicPropertySource
     static void postgresProperties(DynamicPropertyRegistry registry) {
@@ -94,20 +102,30 @@ public class AdControllerTest {
     @BeforeAll
     static void beforeAll(@Autowired PasswordEncoder passwordEncoder,
                           @Autowired UserRepository userRepository,
+                          @Autowired CommentRepository commentRepository,
                           @Autowired ImageService imageService,
                           @Autowired AdRepository adRepository) {
         predefinedUsers = TestUtils.createUniqueUsers(NUMBER_OF_TEST_USERS, passwordEncoder);
-        predefinedAdmin = TestUtils.createAdmin(predefinedUsers);
         userRepository.saveAll(predefinedUsers);
+
+        predefinedAdmin = TestUtils.createAdmin(passwordEncoder);
+        userRepository.save(predefinedAdmin);
 
         ads = TestUtils.createAds(NUMBER_OF_TEST_ADS, predefinedUsers, imageService);
         adRepository.saveAll(ads);
+
+        comments = TestUtils.createComments(NUMBER_OF_TEST_COMMENTS, predefinedUsers, ads);
+        commentRepository.saveAll(comments);
+
+        adRepositoryStat = adRepository;
     }
 
     @AfterAll
     static void afterAll(@Autowired ImageRepository imageRepository,
                          @Autowired UserRepository userRepository,
-                         @Autowired AdRepository adRepository) {
+                         @Autowired AdRepository adRepository,
+                         @Autowired CommentRepository commentRepository) {
+        commentRepository.deleteAll();
         adRepository.deleteAll();
         imageRepository.deleteAll();
         userRepository.deleteAll();
@@ -130,7 +148,7 @@ public class AdControllerTest {
     @DisplayName("Fetch all ads as an authorized user")
     @Test
     void getAllAds_WithAuthorization_Ok() throws Exception {
-        Authentication authentication = getRandomUserAuthentication();
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         ads = adRepository.findAll();
         String expectedJSON = objectMapper.writeValueAsString(adMapper.toAds(ads));
 
@@ -169,7 +187,7 @@ public class AdControllerTest {
     @DisplayName("Add ad by authorised user")
     @Test
     void addAd_withAuthorization_Created() throws Exception {
-        Authentication authentication = getRandomUserAuthentication();
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         CreateOrUpdateAd newAd = TestUtils.getAdUpdate();
         String newAdJson = objectMapper.writeValueAsString(newAd);
         long adNumberBeforeRequest = adRepository.count();
@@ -199,7 +217,7 @@ public class AdControllerTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidArgumentsForCreateOrUpdate")
     void addAd_withAuthorization_InvalidData_BadRequest(CreateOrUpdateAd newAd, String reasonDescription) throws Exception {
-        Authentication authentication = getRandomUserAuthentication();
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         String newAdJson = objectMapper.writeValueAsString(newAd);
         long adNumberBeforeRequest = adRepository.count();
 
@@ -237,8 +255,8 @@ public class AdControllerTest {
     @DisplayName("Fetch non-existent ad as authorised user")
     @Test
     void getAd_withAuthorization_NotFound() throws Exception {
-        Authentication authentication = getRandomUserAuthentication();
-        int nonExistentId = TestUtils.getRandomNonExistentAd(ads);
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
+        int nonExistentId = TestUtils.getRandomNonExistentId(adRepository);
 
         mockMvc.perform(get("/ads/{id}", nonExistentId))
                 .andExpectAll(
@@ -271,7 +289,7 @@ public class AdControllerTest {
     @Test
     void deleteAd_withAuthorization_ownAd_NoContent() throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
-        Authentication authentication = getAuthenticationFor(existingAd.getAuthor());
+        Authentication authentication = TestUtils.getAuthenticationFor(existingAd.getAuthor());
 
         assertEquals(existingAd.getAuthor().getUsername(), authentication.getName(),
                 "User must be the owner of the ad");
@@ -295,7 +313,7 @@ public class AdControllerTest {
                 .filter(author -> !author.getRole().equals(Role.ADMIN))
                 .findAny()
                 .orElseThrow(() -> new IllegalStateException("No suitable user found for testing"));
-        Authentication authentication = getAuthenticationFor(user);
+        Authentication authentication = TestUtils.getAuthenticationFor(user);
 
         AdEntity anyAd = ads.stream()
                 .filter(ad -> !ad.getAuthor().equals(user))
@@ -315,7 +333,7 @@ public class AdControllerTest {
     @DisplayName("An authorized admin can delete someone else's ad")
     @Test
     void deleteAd_AuthorizedUserCanDeleteSomeoneElseAd_NoContent() throws Exception {
-        Authentication authentication = getAuthenticationFor(predefinedAdmin);
+        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
         AdEntity adOfAnyOtherUser = ads.stream()
                 .filter(ad -> !(ad.getAuthor().getId() == predefinedAdmin.getId()))
                 .findAny()
@@ -333,7 +351,7 @@ public class AdControllerTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("provideInvalidDataForDeleteAd")
     void deleteAd_withAuthorization_InvalidData_BadRequest(int adId, String reasonDescription) throws Exception {
-        getRandomUserAuthentication();
+        TestUtils.getRandomUserAuthentication(predefinedUsers);
         long adNumberBeforeRequest = adRepository.count();
 
         MvcResult result = mockMvc.perform(delete("/ads/{id}", adId)).
@@ -349,7 +367,7 @@ public class AdControllerTest {
     static Stream<Arguments> provideInvalidDataForDeleteAd() {
         return Stream.of(
                 Arguments.of(-1, "ID is -1"),
-                Arguments.of(TestUtils.getRandomNonExistentAd(ads), "ID does not exist")
+                Arguments.of(TestUtils.getRandomNonExistentId(adRepositoryStat), "ID does not exist")
         );
     }
 
@@ -379,7 +397,7 @@ public class AdControllerTest {
                 .setId(existingAd.getId())
                 .setPrice(updateAd.getPrice())
                 .setTitle(updateAd.getTitle());
-        Authentication authentication = getAuthenticationFor(existingAd.getAuthor());
+        Authentication authentication = TestUtils.getAuthenticationFor(existingAd.getAuthor());
 
         String expectedJson = objectMapper.writeValueAsString(expectedAd);
         mockMvc.perform(
@@ -404,7 +422,7 @@ public class AdControllerTest {
         do {
             user = TestUtils.getRandomUserFrom(predefinedUsers);
         } while (existingAd.getAuthor().equals(user) || user.getRole().equals(Role.ADMIN));
-        getAuthenticationFor(user);
+        TestUtils.getAuthenticationFor(user);
 
         mockMvc.perform(
                         patch("/ads/{id}", existingAd.getId())
@@ -419,7 +437,7 @@ public class AdControllerTest {
     void updateAd_AuthorizedUser_someoneElseAd_Ok() throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
         CreateOrUpdateAd updateAd = TestUtils.getAdUpdate();
-        getAuthenticationFor(predefinedAdmin);
+        TestUtils.getAuthenticationFor(predefinedAdmin);
 
         Ad expectedAd = new Ad()
                 .setAuthor(existingAd.getAuthor().getId())
@@ -442,8 +460,8 @@ public class AdControllerTest {
     @DisplayName("Update nonexistent ad by authorized user")
     @Test
     void updateAd_withAuthorization_nonExistentAd_NotFound() throws Exception {
-        Authentication authentication = getRandomUserAuthentication();
-        int nonExistingAdId = TestUtils.getRandomNonExistentAd(ads);
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
+        int nonExistingAdId = TestUtils.getRandomNonExistentId(adRepository);
         CreateOrUpdateAd updateAd = TestUtils.getAdUpdate();
 
         mockMvc.perform(
@@ -460,7 +478,7 @@ public class AdControllerTest {
     @MethodSource("getInvalidArgumentsForCreateOrUpdate")
     void updateAd_withAuthorization_InvalidData_BadRequest(CreateOrUpdateAd updateAd, String reasonDescription) throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
-        Authentication authentication = getAuthenticationFor(existingAd.getAuthor());
+        Authentication authentication = TestUtils.getAuthenticationFor(existingAd.getAuthor());
 
         mockMvc.perform(
                         patch("/ads/{id}", existingAd.getId())
@@ -516,7 +534,7 @@ public class AdControllerTest {
     void getAds_withAuthorization_Ok() throws Exception {
         AdEntity randomAd = getRandomAdFrom(ads);
         UserEntity userOfRandomAd = randomAd.getAuthor();
-        Authentication authentication = getAuthenticationFor(userOfRandomAd);
+        Authentication authentication = TestUtils.getAuthenticationFor(userOfRandomAd);
 
 
         List<AdEntity> userAds = ads.stream()
@@ -595,8 +613,8 @@ public class AdControllerTest {
     @DisplayName("Update the image of a nonexistent ad by an authorized admin")
     @Test
     void updateAdImage_withAuthorization_nonExistentAd_withAdminRole_thenNotFound() throws Exception {
-        Authentication authentication = getAuthenticationFor(predefinedAdmin);
-        int nonExistentAdId = TestUtils.getRandomNonExistentAd(ads);
+        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
+        int nonExistentAdId = TestUtils.getRandomNonExistentId(adRepository);
 
         MockMultipartFile imageFile = new MockMultipartFile(
                 "image", "image.png",
@@ -614,18 +632,5 @@ public class AdControllerTest {
                 )
                 .andExpect(authenticated().withAuthenticationName(authentication.getName()).withRoles("ADMIN"))
                 .andExpect(status().isNotFound());
-    }
-
-    private Authentication getAuthenticationFor(UserEntity userEntity) {
-        Authentication authentication = createAuthenticationTokenForUser(userEntity);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        return authentication;
-    }
-
-    private Authentication getRandomUserAuthentication() {
-        UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
-        Authentication authentication = createAuthenticationTokenForUser(user);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        return authentication;
     }
 }
