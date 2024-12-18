@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.mime.MimeTypeException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +43,7 @@ public class AdController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Ad> addAd(@AuthenticationPrincipal UserPrincipal userDetails,
                                     @RequestPart @Valid CreateOrUpdateAd properties,
-                                    @RequestPart MultipartFile image) {
+                                    @RequestPart MultipartFile image) throws MimeTypeException {
         String username = userDetails.getUser().getUsername();
         log.info("Received request to create ad with title={} from user={}", username, properties.getTitle());
 

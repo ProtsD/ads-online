@@ -2,6 +2,8 @@ package ru.ads_online.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.mime.MimeTypeException;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,6 +19,7 @@ import ru.ads_online.pojo.entity.AdEntity;
 import ru.ads_online.pojo.entity.ImageEntity;
 import ru.ads_online.pojo.entity.UserEntity;
 import ru.ads_online.repository.AdRepository;
+import ru.ads_online.repository.CommentRepository;
 import ru.ads_online.security.UserPrincipal;
 import ru.ads_online.service.AdService;
 import ru.ads_online.service.ImageService;
@@ -32,6 +35,7 @@ public class AdServiceImpl implements AdService {
     private final AdRepository adRepository;
     private final AdMapper adMapper;
     private final ImageService imageService;
+    private final CommentRepository commentRepository;
 
     @Transactional(readOnly = true)
     @Override
@@ -42,7 +46,7 @@ public class AdServiceImpl implements AdService {
 
     @Transactional
     @Override
-    public Ad addAd(UserPrincipal userDetails, CreateOrUpdateAd adBody, MultipartFile image) {
+    public Ad addAd(UserPrincipal userDetails, CreateOrUpdateAd adBody, MultipartFile image) throws MimeTypeException {
         UserEntity author = userDetails.getUser();
 
         if (image == null || image.isEmpty()) {
@@ -50,8 +54,14 @@ public class AdServiceImpl implements AdService {
             log.warn(message);
             throw new ImageUploadException(message);
         }
-        AdEntity currentAd = adMapper.toAdEntity(adBody).setAuthor(author);
 
+        if (!image.getContentType().equals(MediaType.IMAGE_PNG_VALUE)) {
+            String message = "Wrong mime type";
+            log.warn(message);
+            throw new MimeTypeException(message);
+        }
+
+        AdEntity currentAd = adMapper.toAdEntity(adBody).setAuthor(author);
         String imageURL = uploadImage(image);
         return adMapper.toAd(adRepository.save(currentAd.setImage(imageURL)));
     }
@@ -79,6 +89,7 @@ public class AdServiceImpl implements AdService {
                 });
 
         int imageId = getImageIdFromUrl(currentAd.getImage());
+        commentRepository.deleteByAdEntityId(id);
         imageService.deleteImage(imageId);
         adRepository.delete(currentAd);
     }
@@ -145,7 +156,7 @@ public class AdServiceImpl implements AdService {
         }
     }
 
-    private String getImageUrl(ImageEntity imageEntity) {
+    public String getImageUrl(ImageEntity imageEntity) {
         return ImageService.IMAGE_URL_PREFIX + imageEntity.getId();
     }
 

@@ -12,4 +12,6 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Integer>
     @Query("SELECT new ru.ads_online.pojo.dto.comment.Comment(u.id, u.image, u.firstName, c.createdAt, c.id, c.text)" +
             "FROM CommentEntity c JOIN UserEntity u on c.author = u WHERE c.adEntity.id = :id")
     List<Comment> findAllByAdId(@Param("id") int adId);
+
+    void deleteByAdEntityId(int id);
 }

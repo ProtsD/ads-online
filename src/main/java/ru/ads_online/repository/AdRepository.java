@@ -7,5 +7,5 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AdRepository extends JpaRepository<AdEntity, Integer> {
-    Optional<List<AdEntity>> findAllByAuthorId(Integer id);
+    Optional<List<AdEntity>> findAllByAuthorId(int id);
 }

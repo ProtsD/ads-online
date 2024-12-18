@@ -1,5 +1,6 @@
 package ru.ads_online.service;
 
+import org.apache.tika.mime.MimeTypeException;
 import org.springframework.web.multipart.MultipartFile;
 import ru.ads_online.pojo.dto.ad.Ad;
 import ru.ads_online.pojo.dto.ad.Ads;
@@ -10,7 +11,7 @@ import ru.ads_online.security.UserPrincipal;
 public interface AdService {
     Ads getAllAds();
 
-    Ad addAd(UserPrincipal userDetails, CreateOrUpdateAd properties, MultipartFile image);
+    Ad addAd(UserPrincipal userDetails, CreateOrUpdateAd properties, MultipartFile image) throws MimeTypeException;
 
     ExtendedAd getAd(int id);
 

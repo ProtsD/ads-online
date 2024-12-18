@@ -127,14 +127,14 @@ public class TestUtils {
                 .toList();
     }
 
-    public static CreateOrUpdateAd getAdUpdate() {
+    public static CreateOrUpdateAd getUpdateForAd() {
         List<String> titles = getTitle(1);
         List<String> description = getDescriptions(10, 1);
 
         return new CreateOrUpdateAd()
-                .setTitle(titles.get(0))
+                .setTitle(titles.getFirst())
                 .setPrice(random.nextInt(maxPrice))
-                .setDescription(description.get(0));
+                .setDescription(description.getFirst());
     }
 
     public static List<String> getTitle(int quantity) {
@@ -233,16 +233,6 @@ public class TestUtils {
         UserPrincipal userPrincipal = new UserPrincipal(user);
         return new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities()
         );
-    }
-
-    public static int getRandomNonExistentAd(List<AdEntity> ads) {
-        int randomNonExistentId;
-        List<Integer> allIds = ads.stream().map(AdEntity::getId).toList();
-        do {
-            randomNonExistentId = random.nextInt(Integer.MAX_VALUE);
-        } while (allIds.contains(randomNonExistentId));
-
-        return randomNonExistentId;
     }
 
     public static <T> T findDistinctElement(List<T> list, T object) {

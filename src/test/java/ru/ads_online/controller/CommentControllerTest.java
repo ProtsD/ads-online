@@ -359,7 +359,7 @@ public class CommentControllerTest {
 
     @DisplayName("Delete someone else's comment as an authorized user")
     @Test
-    void deleteComment_shouldTReturn403_whenAuthorizedUserIsNotAuthorOfTheComment() throws Exception {
+    void deleteComment_shouldTReturn403_whenAuthorizedUserIsNotCommentAuthor() throws Exception {
         CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
         AdEntity ad = comment.getAdEntity();
         UserEntity user = TestUtils.findDistinctElement(predefinedUsers, comment.getAuthor());
@@ -482,7 +482,7 @@ public class CommentControllerTest {
 
     @DisplayName("Updating someone else's comment as an authorized user")
     @Test
-    void updateComment_shouldTReturn403_whenAuthorizedUserIsNotAuthorOfTheComment() throws Exception {
+    void updateComment_shouldTReturn403_whenAuthorizedUserIsNotCommentAuthor() throws Exception {
         CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
         AdEntity ad = comment.getAdEntity();
         UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
