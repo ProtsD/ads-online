@@ -138,8 +138,8 @@ public class AdControllerTest {
         userRepository.deleteAll();
     }
 
-    @DisplayName("Fetch all ads as an authorized user")
     @Test
+    @DisplayName("Fetch all ads as an authorized user")
     void getAllAds_shouldReturnAds_whenRequestFromAuthorizedUser() throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         ads = adRepository.findAll();
@@ -153,8 +153,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Fetch all ads as an unauthorized user")
     @Test
+    @DisplayName("Fetch all ads as an unauthorized user")
     void getAllAds_shouldReturnAds_whenRequestFromUnauthorizedUser() throws Exception {
         ads = adRepository.findAll();
         String expectedJSON = objectMapper.writeValueAsString(adMapper.toAds(ads));
@@ -167,46 +167,38 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Add ad with null data as an unauthorized user")
-    @ParameterizedTest(name = "{4}")
-    @MethodSource("getNullValuesForAddAd")
-    void addAd_shouldReturn400Or401_whenNullValues(UserEntity userEntity,
-                                                   MockMultipartFile properties,
-                                                   MockMultipartFile image,
-                                                   int expectedStatus,
-                                                   String reasonDescription) throws Exception {
-        MockMultipartHttpServletRequestBuilder requestBuilder = multipart(URL_ADD_AD);
-
-        if (userEntity != null) TestUtils.getAuthenticationFor(userEntity);
-        if (properties != null) requestBuilder.file(properties);
-        if (image != null) requestBuilder.file(image);
-
-        mockMvc.perform(requestBuilder)
-                .andExpect(status().is(expectedStatus));
-    }
-
-    static Stream<Arguments> getNullValuesForAddAd() throws JsonProcessingException {
-        UserEntity userEntity = TestUtils.getRandomUserFrom(predefinedUsers);
-
+    @Test
+    @DisplayName("Add ad by authorised user")
+    void addAd_shouldTReturn201AndAd_whenAdSuccessfullyCreated() throws Exception {
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         CreateOrUpdateAd newAd = TestUtils.getUpdateForAd();
-        MockMultipartFile mockProperties = new MockMultipartFile(
-                "properties", "adProperties.json",
-                MediaType.APPLICATION_JSON_VALUE, objectMapper.writeValueAsString(newAd).getBytes());
+        String newAdJson = objectMapper.writeValueAsString(newAd);
+        long adNumberBeforeRequest = adRepository.count();
 
-        MockMultipartFile mockImage = new MockMultipartFile(
+        MockMultipartFile adProperties = new MockMultipartFile(
+                "properties", "adProperties.json",
+                MediaType.APPLICATION_JSON_VALUE, newAdJson.getBytes());
+        MockMultipartFile adImage = new MockMultipartFile(
                 "image", "image.png",
                 MediaType.IMAGE_PNG_VALUE, TestUtils.generateRandomImageBytes());
+        mockMvc.perform(multipart(URL_ADD_AD).file(adProperties).file(adImage))
+                .andExpectAll(
+                        status().isCreated(),
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        jsonPath("$.author").value(((UserPrincipal) authentication.getPrincipal()).getUser().getId()),
+                        jsonPath("$.image").exists(),
+                        jsonPath("$.pk").exists(),
+                        jsonPath("$.price").value(newAd.getPrice()),
+                        jsonPath("$.title").value(newAd.getTitle())
+                );
 
-        return Stream.of(
-                Arguments.of(null, mockProperties, mockImage, 401, "User is null"),
-                Arguments.of(userEntity, null, mockImage, 400, "Ad body is null"),
-                Arguments.of(userEntity, mockProperties, null, 400, "Image is null")
-        );
+        assertEquals(adNumberBeforeRequest + 1, adRepository.count(),
+                "Ad count should be increased by one after an authorized request.");
     }
 
-    @DisplayName("Add ad with invalid image as an unauthorized user")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidImages")
+    @DisplayName("Add ad with invalid image as an unauthorized user")
     void addAd_shouldReturn400_whenInvalidImage(MockMultipartFile image, String description) throws Exception {
         TestUtils.getRandomUserAuthentication(predefinedUsers);
 
@@ -240,9 +232,9 @@ public class AdControllerTest {
         );
     }
 
-    @DisplayName("Add ad with invalid data by authorised user")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidArgumentsForCreateOrUpdate")
+    @DisplayName("Add ad with invalid data by authorised user")
     void addAd_shouldTReturn400_whenInvalidCreateOrUpdateAd(CreateOrUpdateAd newAd, String reasonDescription) throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         String newAdJson = objectMapper.writeValueAsString(newAd);
@@ -303,37 +295,45 @@ public class AdControllerTest {
         );
     }
 
-    @DisplayName("Add ad by authorised user")
-    @Test
-    void addAd_shouldTReturn201AndAd_whenAdSuccessfullyCreated() throws Exception {
-        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
-        CreateOrUpdateAd newAd = TestUtils.getUpdateForAd();
-        String newAdJson = objectMapper.writeValueAsString(newAd);
-        long adNumberBeforeRequest = adRepository.count();
+    @ParameterizedTest(name = "{4}")
+    @MethodSource("getNullValuesForAddAd")
+    @DisplayName("Add ad with null data as an unauthorized user")
+    void addAd_shouldReturn400Or401_whenNullValues(UserEntity userEntity,
+                                                   MockMultipartFile properties,
+                                                   MockMultipartFile image,
+                                                   int expectedStatus,
+                                                   String reasonDescription) throws Exception {
+        MockMultipartHttpServletRequestBuilder requestBuilder = multipart(URL_ADD_AD);
 
-        MockMultipartFile adProperties = new MockMultipartFile(
-                "properties", "adProperties.json",
-                MediaType.APPLICATION_JSON_VALUE, newAdJson.getBytes());
-        MockMultipartFile adImage = new MockMultipartFile(
-                "image", "image.png",
-                MediaType.IMAGE_PNG_VALUE, TestUtils.generateRandomImageBytes());
-        mockMvc.perform(multipart(URL_ADD_AD).file(adProperties).file(adImage))
-                .andExpectAll(
-                        status().isCreated(),
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        jsonPath("$.author").value(((UserPrincipal) authentication.getPrincipal()).getUser().getId()),
-                        jsonPath("$.image").exists(),
-                        jsonPath("$.pk").exists(),
-                        jsonPath("$.price").value(newAd.getPrice()),
-                        jsonPath("$.title").value(newAd.getTitle())
-                );
+        if (userEntity != null) TestUtils.getAuthenticationFor(userEntity);
+        if (properties != null) requestBuilder.file(properties);
+        if (image != null) requestBuilder.file(image);
 
-        assertEquals(adNumberBeforeRequest + 1, adRepository.count(),
-                "Ad count should be increased by one after an authorized request.");
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().is(expectedStatus));
     }
 
-    @DisplayName("Add ad as an unauthorized user")
+    static Stream<Arguments> getNullValuesForAddAd() throws JsonProcessingException {
+        UserEntity userEntity = TestUtils.getRandomUserFrom(predefinedUsers);
+
+        CreateOrUpdateAd newAd = TestUtils.getUpdateForAd();
+        MockMultipartFile mockProperties = new MockMultipartFile(
+                "properties", "adProperties.json",
+                MediaType.APPLICATION_JSON_VALUE, objectMapper.writeValueAsString(newAd).getBytes());
+
+        MockMultipartFile mockImage = new MockMultipartFile(
+                "image", "image.png",
+                MediaType.IMAGE_PNG_VALUE, TestUtils.generateRandomImageBytes());
+
+        return Stream.of(
+                Arguments.of(null, mockProperties, mockImage, 401, "User is null"),
+                Arguments.of(userEntity, null, mockImage, 400, "Ad body is null"),
+                Arguments.of(userEntity, mockProperties, null, 400, "Image is null")
+        );
+    }
+
     @Test
+    @DisplayName("Add ad as an unauthorized user")
     void addAd_shouldTReturn401_whenUnauthorizedUser() throws Exception {
         CreateOrUpdateAd newAd = TestUtils.getUpdateForAd();
         String newAdJson = objectMapper.writeValueAsString(newAd);
@@ -356,8 +356,8 @@ public class AdControllerTest {
                 "Ad count should remain unchanged after an unauthorized request.");
     }
 
-    @DisplayName("Fetch ad as authorised user")
     @Test
+    @DisplayName("Fetch ad as authorised user")
     void getAd_shouldTReturnExtendedAd_whenAdIdExist() throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
 
@@ -373,9 +373,9 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Fetch ad with invalid id as an authorized user")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidId")
+    @DisplayName("Fetch ad with invalid id as an authorized user")
     void getAd_shouldTReturn400_whenInvalidId(String id, String caseName) throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
 
@@ -386,8 +386,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Fetch ad as an unauthorised user")
     @Test
+    @DisplayName("Fetch ad as an unauthorised user")
     void getAd_shouldTReturn401_whenUnauthorizedUser() throws Exception {
         int existedAdId = TestUtils.getRandomAdFrom(ads).getId();
 
@@ -400,8 +400,8 @@ public class AdControllerTest {
                         content().string(""));
     }
 
-    @DisplayName("Fetch non-existent ad as authorised user")
     @Test
+    @DisplayName("Fetch non-existent ad as authorised user")
     void getAd_shouldTReturn404_whenAdIdDoesNotExist() throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         int nonExistentId = TestUtils.getRandomNonExistentId(adRepository);
@@ -413,8 +413,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Delete ad by authorized owner")
     @Test
+    @DisplayName("Delete ad by authorized owner")
     void deleteAd_shouldTReturn204_whenAdSuccessfullyDeletedByUser() throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
         Authentication authentication = TestUtils.getAuthenticationFor(existingAd.getAuthor());
@@ -437,8 +437,8 @@ public class AdControllerTest {
                 "Ad count should decrease by 1 after deletion.");
     }
 
-    @DisplayName("An authorized admin can delete someone else's ad")
     @Test
+    @DisplayName("An authorized admin can delete someone else's ad")
     void deleteAd_shouldTReturn204_whenAdSuccessfullyDeletedByAdmin() throws Exception {
         Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
         AdEntity adOfAnyOtherUser = ads.stream()
@@ -461,9 +461,9 @@ public class AdControllerTest {
                 "Ad count should decrease by 1 when an admin deletes someone else's ad");
     }
 
-    @DisplayName("Delete ad with invalid data as authorised admin")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidId")
+    @DisplayName("Delete ad with invalid data as authorised admin")
     void deleteAd_shouldTReturn400_whenInvalidId(String id, String caseName) throws Exception {
         Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
 
@@ -474,21 +474,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Delete non-existent ad as authorised admin")
     @Test
-    void deleteAd_shouldTReturn404_whenAdIdDoesNotExist() throws Exception {
-        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
-        int nonExistentId = TestUtils.getRandomNonExistentId(adRepository);
-
-        mockMvc.perform(delete(URL_DELETE_AD, nonExistentId))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isNotFound()
-                );
-    }
-
     @DisplayName("Delete ad as unauthorized user")
-    @Test
     void deleteAd_shouldTReturn401_whenUnauthorizedUser() throws Exception {
         AdEntity existedAd = TestUtils.getRandomAdFrom(ads);
 
@@ -507,8 +494,8 @@ public class AdControllerTest {
                 "The ad count should remain the same after an unauthorized delete attempt.");
     }
 
-    @DisplayName("An authorized user cannot delete someone else's ad")
     @Test
+    @DisplayName("An authorized user cannot delete someone else's ad")
     void deleteAd_shouldTReturn403_whenAuthorizedUserIsNotAdAuthor() throws Exception {
         UserEntity user = ads.stream()
                 .map(AdEntity::getAuthor)
@@ -532,8 +519,21 @@ public class AdControllerTest {
                 "Ad count should remain unchanged when deleting someone else's ad.");
     }
 
-    @DisplayName("Update ad by authorized owner")
     @Test
+    @DisplayName("Delete non-existent ad as authorised admin")
+    void deleteAd_shouldTReturn404_whenAdIdDoesNotExist() throws Exception {
+        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
+        int nonExistentId = TestUtils.getRandomNonExistentId(adRepository);
+
+        mockMvc.perform(delete(URL_DELETE_AD, nonExistentId))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isNotFound()
+                );
+    }
+
+    @Test
+    @DisplayName("Update ad by authorized owner")
     void updateAd_shouldReturnAd_whenAdSuccessfullyUpdatedByAuthor() throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
         CreateOrUpdateAd updateForAd = TestUtils.getUpdateForAd();
@@ -553,8 +553,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Update someone else's ad by authorized admin")
     @Test
+    @DisplayName("Update someone else's ad by authorized admin")
     void updateAd_shouldReturnAd_whenAdSuccessfullyUpdatedByAdmin() throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
         CreateOrUpdateAd updateForAd = TestUtils.getUpdateForAd();
@@ -574,9 +574,9 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Update ad with wrong data as authorized owner")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidArgumentsForCreateOrUpdate")
+    @DisplayName("Update ad with wrong data as authorized owner")
     void updateAd_shouldTReturn400_whenInvalidCreateOrUpdateAd(CreateOrUpdateAd updateForAd, String reasonDescription) throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
         Authentication authentication = TestUtils.getAuthenticationFor(existingAd.getAuthor());
@@ -590,9 +590,9 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Update ad with invalid data as authorised admin")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidId")
+    @DisplayName("Update ad with invalid data as authorised admin")
     void updateAd_shouldTReturn400_whenInvalidId(String id, String caseName) throws Exception {
         Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
 
@@ -603,24 +603,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Update non-existent ad by authorized admin")
     @Test
-    void updateAd_shouldTReturn404_whenAdIdDoesNotExist() throws Exception {
-        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
-        int nonExistingAdId = TestUtils.getRandomNonExistentId(adRepository);
-        CreateOrUpdateAd updateForAd = TestUtils.getUpdateForAd();
-
-        mockMvc.perform(patch(URL_UPDATE_AD, nonExistingAdId)
-                        .contentType(MediaType.APPLICATION_JSON_VALUE)
-                        .content(objectMapper.writeValueAsString(updateForAd)))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isNotFound()
-                );
-    }
-
     @DisplayName("Update ad as unauthorised user")
-    @Test
     void updateAd_shouldTReturn401_whenUnauthorizedUser() throws Exception {
         CreateOrUpdateAd updateForAd = TestUtils.getUpdateForAd();
         int existingAdId = TestUtils.getRandomAdFrom(ads).getId();
@@ -634,8 +618,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Update another user's ad as an authorized user")
     @Test
+    @DisplayName("Update another user's ad as an authorized user")
     void updateAd_shouldTReturn403_whenAuthorizedUserIsNotAdAuthor() throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
         CreateOrUpdateAd updateForAd = TestUtils.getUpdateForAd();
@@ -652,8 +636,24 @@ public class AdControllerTest {
                 .andExpect(status().isForbidden());
     }
 
-    @DisplayName("Fetch all ads of authorized user")
     @Test
+    @DisplayName("Update non-existent ad by authorized admin")
+    void updateAd_shouldTReturn404_whenAdIdDoesNotExist() throws Exception {
+        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
+        int nonExistingAdId = TestUtils.getRandomNonExistentId(adRepository);
+        CreateOrUpdateAd updateForAd = TestUtils.getUpdateForAd();
+
+        mockMvc.perform(patch(URL_UPDATE_AD, nonExistingAdId)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(objectMapper.writeValueAsString(updateForAd)))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isNotFound()
+                );
+    }
+
+    @Test
+    @DisplayName("Fetch all ads of authorized user")
     void getAds_shouldReturnAds_whenExists() throws Exception {
         AdEntity existingAd = getRandomAdFrom(ads);
         UserEntity user = existingAd.getAuthor();
@@ -673,8 +673,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Fetch ads of unauthorised user")
     @Test
+    @DisplayName("Fetch ads of unauthorised user")
     void getAds_shouldTReturn401_whenUnauthorizedUser() throws Exception {
         mockMvc.perform(get(URL_GET_ADS))
                 .andExpectAll(
@@ -683,8 +683,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("An Ad picture update by unauthorized user")
     @Test
+    @DisplayName("An Ad picture update by unauthorized user")
     void updateAdImage_shouldTReturnNewImageUrl_whenAdSuccessfullyUpdatedByAuthor() throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
         Authentication authentication = getAuthenticationFor(existingAd.getAuthor());
@@ -707,8 +707,29 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("An Ad picture update by unauthorized user")
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("getInvalidId")
+    @DisplayName("Update ad with invalid data as authorised admin")
+    void updateAdImage_shouldTReturn400_whenInvalidId(String id, String caseName) throws Exception {
+        TestUtils.getAuthenticationFor(predefinedAdmin);
+
+        MockMultipartFile imageFile = new MockMultipartFile(
+                "image", "image.png",
+                MediaType.IMAGE_PNG_VALUE, TestUtils.generateRandomImageBytes());
+
+        mockMvc.perform(multipart(URL_UPDATE_AD_IMAGE, id)
+                .file(imageFile)
+                .with(
+                        request -> {
+                            request.setMethod("PATCH");
+                            return request;
+                        }
+                )
+        );
+    }
+
     @Test
+    @DisplayName("An Ad picture update by unauthorized user")
     void updateAdImage_shouldTReturn401_whenUnauthorizedUser() throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
         MockMultipartFile newImageForAd = new MockMultipartFile(
@@ -729,8 +750,8 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Update the image of someone else's ad by an authorized user")
     @Test
+    @DisplayName("Update the image of someone else's ad by an authorized user")
     void updateAdImage_shouldTReturn403_whenAuthorizedUserIsNotAdAuthor() throws Exception {
         AdEntity existingAd = TestUtils.getRandomAdFrom(ads);
         UserEntity userEntity = predefinedUsers.stream()
@@ -757,9 +778,9 @@ public class AdControllerTest {
                 );
     }
 
-    @DisplayName("Update the image of a nonexistent ad by an authorized admin")
     @Test
-    void updateAdImage_withAuthorization_nonExistentAd_withAdminRole_thenNotFound() throws Exception {
+    @DisplayName("Update the image of a nonexistent ad by an authorized admin")
+    void updateAdImage_shouldTReturn404_whenAdIdDoesNotExist() throws Exception {
         Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
         int nonExistentAdId = TestUtils.getRandomNonExistentId(adRepository);
 
@@ -778,48 +799,6 @@ public class AdControllerTest {
                 )
                 .andExpect(authenticated().withAuthenticationName(authentication.getName()).withRoles("ADMIN"))
                 .andExpect(status().isNotFound());
-    }
-
-    @DisplayName("Update ad with invalid data as authorised admin")
-    @ParameterizedTest(name = "{1}")
-    @MethodSource("getInvalidId")
-    void updateAdImage_shouldTReturn400_whenInvalidId(String id, String caseName) throws Exception {
-        TestUtils.getAuthenticationFor(predefinedAdmin);
-
-        MockMultipartFile imageFile = new MockMultipartFile(
-                "image", "image.png",
-                MediaType.IMAGE_PNG_VALUE, TestUtils.generateRandomImageBytes());
-
-        mockMvc.perform(multipart(URL_UPDATE_AD_IMAGE, id)
-                .file(imageFile)
-                .with(
-                        request -> {
-                            request.setMethod("PATCH");
-                            return request;
-                        }
-                )
-        );
-    }
-
-    @DisplayName("Fetch non-existent ad as authorised user")
-    @Test
-    void updateAdImage_shouldTReturn404_whenAdIdDoesNotExist() throws Exception {
-        TestUtils.getRandomUserAuthentication(predefinedUsers);
-        int nonExistentId = TestUtils.getRandomNonExistentId(adRepository);
-
-        MockMultipartFile imageFile = new MockMultipartFile(
-                "image", "image.png",
-                MediaType.IMAGE_PNG_VALUE, TestUtils.generateRandomImageBytes());
-
-        mockMvc.perform(multipart(URL_UPDATE_AD_IMAGE, nonExistentId)
-                .file(imageFile)
-                .with(
-                        request -> {
-                            request.setMethod("PATCH");
-                            return request;
-                        }
-                )
-        );
     }
 
     static Stream<Arguments> getInvalidId() {
