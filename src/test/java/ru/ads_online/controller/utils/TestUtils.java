@@ -3,6 +3,7 @@ package ru.ads_online.controller.utils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
+import net.minidev.json.JSONObject;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -23,22 +24,23 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class TestUtils {
-    static final int usernameMinSize = 4, usernameMaxSize = 32;
-    static final int passwordMinSize = 8, passwordMaxSize = 16;
-    static final int firstNameMinSize = 2, firstNameMaxSize = 16;
-    static final int lastNameMinSize = 2, lastNameMaxSize = 16;
-    static final int titleMinSize = 4, titleMaxSize = 32;
-    static final int descriptionMinSize = 8, descriptionMaxSize = 64;
-    static final int commentMinSize = 8, commentMaxSize = 64;
+    public static final int usernameMinSize = 4, usernameMaxSize = 32;
+    public static final int passwordMinSize = 8, passwordMaxSize = 16;
+    public static final int firstNameMinSize = 2, firstNameMaxSize = 16;
+    public static final int lastNameMinSize = 2, lastNameMaxSize = 16;
+    public static final int titleMinSize = 4, titleMaxSize = 32;
+    public static final int descriptionMinSize = 8, descriptionMaxSize = 64;
+    public static final int commentMinSize = 8, commentMaxSize = 64;
 
     static final int maxPrice = 10000000;
     static final int maxImageSize = 10485760;
     static final Faker fakerEn = new Faker(Locale.forLanguageTag("en-US"));
+    static final Faker fakerRu = new Faker(Locale.forLanguageTag("ru-RU"));
     static final Random random = new Random();
 
     public static List<UserEntity> createUniqueUsers(int numberOfUsers, PasswordEncoder passwordEncoder) {
         List<String> emails = getEmails(numberOfUsers);
-        List<String> passwords = getPasswords(numberOfUsers);
+        List<String> passwords = getDistinctPasswords(numberOfUsers);
         List<String> firstNames = getFirstNames(numberOfUsers);
         List<String> lastNames = getLastNames(numberOfUsers);
         List<String> uniquePhones = getPhones(numberOfUsers);
@@ -72,10 +74,15 @@ public class TestUtils {
                 .toList();
     }
 
-    public static List<String> getPasswords(int quantity) {
+    public static List<String> getDistinctPasswords(int quantity) {
         return Stream.generate(() -> fakerEn.internet().password(passwordMinSize, passwordMaxSize))
+                .distinct()
                 .limit(quantity)
                 .toList();
+    }
+
+    public static String getPassword() {
+        return fakerEn.internet().password(passwordMinSize, passwordMaxSize);
     }
 
     public static List<String> getFirstNames(int quantity) {
@@ -95,21 +102,10 @@ public class TestUtils {
     }
 
     public static List<String> getPhones(int quantity) {
-        return Stream.generate(() -> fakerEn.phoneNumber().phoneNumber())
+        return Stream.generate(() -> fakerRu.phoneNumber().phoneNumber())
                 .distinct()
                 .limit(quantity)
                 .toList();
-    }
-
-    public static Authentication createAuthenticationFor(UserEntity user) {
-        return Optional.ofNullable(user)
-                .map(UserPrincipal::new)
-                .map(securityUserPrincipal -> new UsernamePasswordAuthenticationToken(
-                        securityUserPrincipal,
-                        null,
-                        securityUserPrincipal.getAuthorities()
-                ))
-                .orElse(null);
     }
 
     public static List<AdEntity> createAds(int numberOfAds, List<UserEntity> users, ImageService imageService) {
@@ -246,5 +242,20 @@ public class TestUtils {
                 .filter(o -> !o.equals(object))
                 .findAny()
                 .orElseThrow(() -> new NoSuchElementException("No distinct element found in the list."));
+    }
+
+    public static JSONObject createNewPasswordDto(String currentPassword, String newPassword) {
+        JSONObject newPasswordDto = new JSONObject();
+        newPasswordDto.put("currentPassword", currentPassword);
+        newPasswordDto.put("newPassword", newPassword);
+        return newPasswordDto;
+    }
+
+    public static JSONObject createNewUpdateUserDto(String firstName, String lastName, String phone) {
+        JSONObject newPasswordDto = new JSONObject();
+        newPasswordDto.put("firstName", firstName);
+        newPasswordDto.put("lastName", lastName);
+        newPasswordDto.put("phone", phone);
+        return newPasswordDto;
     }
 }

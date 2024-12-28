@@ -6,7 +6,7 @@ import lombok.experimental.Accessors;
 @Data
 @Accessors(chain = true)
 public class ExtendedAd {
-    private int id;
+    private int pk;
     private String authorFirstName;
     private String authorLastName;
     private String description;

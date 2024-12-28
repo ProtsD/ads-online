@@ -12,7 +12,7 @@ public class CommentEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
-    private Integer id;
+    private int id;
     @Column(name = "created_at", nullable = false)
     private long createdAt;
     @Column(name = "text", nullable = false)

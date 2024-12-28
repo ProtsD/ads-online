@@ -14,6 +14,6 @@ public class Comment {
     private String authorImage;
     private String authorFirstName;
     private long createdAt;
-    private int id;
+    private int pk;
     private String text;
 }

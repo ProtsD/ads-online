@@ -27,6 +27,7 @@ public class AdsOnlineExceptionHandler {
         );
 
         log.error("Unexpected error", exception);
+
         return ResponseEntity.status(exception.getStatusCode()).body(errorBody);
     }
 
@@ -41,6 +42,7 @@ public class AdsOnlineExceptionHandler {
         );
 
         log.warn("Validation error: {}", message);
+
         return ResponseEntity.badRequest().body(errorBody);
     }
 
@@ -54,6 +56,7 @@ public class AdsOnlineExceptionHandler {
         );
 
         log.warn("Validation error: {}", message);
+
         return ResponseEntity.badRequest().body(errorBody);
     }
     @ExceptionHandler(MimeTypeException.class)
@@ -66,6 +69,7 @@ public class AdsOnlineExceptionHandler {
         );
 
         log.warn("Validation error: {}", message);
+
         return ResponseEntity.badRequest().body(errorBody);
     }
 }

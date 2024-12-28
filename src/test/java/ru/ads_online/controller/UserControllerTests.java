@@ -1,31 +1,34 @@
 package ru.ads_online.controller;
 
-import lombok.RequiredArgsConstructor;
 import net.minidev.json.JSONObject;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import ru.ads_online.AdsOnlineApplication;
 import ru.ads_online.controller.utils.TestUtils;
-import ru.ads_online.pojo.dto.user.Role;
+import ru.ads_online.pojo.dto.user.UpdateUser;
 import ru.ads_online.pojo.entity.UserEntity;
 import ru.ads_online.repository.ImageRepository;
 import ru.ads_online.repository.UserRepository;
 import ru.ads_online.service.ImageService;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,10 +38,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(classes = AdsOnlineApplication.class)
-@Testcontainers
 @TestMethodOrder(MethodOrderer.MethodName.class)
+@Testcontainers
+@Transactional
 @AutoConfigureMockMvc
-@RequiredArgsConstructor
 public class UserControllerTests {
     @Autowired
     private UserRepository userRepository;
@@ -48,8 +51,13 @@ public class UserControllerTests {
     private MockMvc mockMvc;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    private final static String URL_POST_PASSWORD = "/users/set_password";
+    private final static String URL_GET_DATA = "/users/me";
+    private final static String URL_UPDATE_DATA = "/users/me";
+    private final static String URL_PATCH_IMAGE = "/users/me/image";
     private final static int NUMBER_OF_TEST_USERS = 10;
-    private static List<UserEntity> users;
+    private static UserEntity predefinedAdmin;
+    private static List<UserEntity> predefinedUsers;
     @Container
     private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:alpine");
 
@@ -61,185 +69,251 @@ public class UserControllerTests {
     }
 
     @BeforeAll
-    static void beforeAll(@Autowired PasswordEncoder passwordEncoder, @Autowired UserRepository userRepository) {
-        users = TestUtils.createUniqueUsers(NUMBER_OF_TEST_USERS, passwordEncoder);
-        userRepository.saveAll(users);
+    static void beforeAll(@Autowired PasswordEncoder passwordEncoder,
+                          @Autowired UserRepository userRepository) {
+        predefinedUsers = TestUtils.createUniqueUsers(NUMBER_OF_TEST_USERS, passwordEncoder);
+        userRepository.saveAll(predefinedUsers);
+
+        predefinedAdmin = TestUtils.createAdmin(passwordEncoder);
+        userRepository.save(predefinedAdmin);
     }
 
     @AfterAll
-    static void afterAll(@Autowired ImageRepository imageRepository, @Autowired UserRepository userRepository) {
+    static void afterAll(@Autowired ImageRepository imageRepository,
+                         @Autowired UserRepository userRepository) {
         imageRepository.deleteAll();
         userRepository.deleteAll();
     }
 
-    @DisplayName("Password update by authenticated user with USER role")
+    @DisplayName("Authorized user's password update with invalid NewPassword dto")
+    @ParameterizedTest(name = "{2}")
+    @MethodSource("getInvalidNewPassword")
+    void setPassword_shouldReturn400_whenInvalidNewPasswordDto(String currentPassword, String newPassword, String description) throws Exception {
+        JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
+
+        UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
+        userRepository.save(user.setPassword(passwordEncoder.encode(currentPassword)));
+        TestUtils.getAuthenticationFor(user);
+
+        mockMvc.perform(post(URL_POST_PASSWORD)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(newPasswordDto.toString()))
+                .andExpectAll(
+                        status().isBadRequest()
+                );
+        String updatedPassword = userRepository.findById(user.getId()).orElseThrow().getPassword();
+        assertTrue(passwordEncoder.matches(currentPassword, updatedPassword));
+    }
+
+    private static Stream<Arguments> getInvalidNewPassword() {
+        List<String> passwords = TestUtils.getDistinctPasswords(4);
+        return Stream.of(
+                Arguments.of(
+                        String.valueOf('a').repeat(TestUtils.passwordMinSize - 1),
+                        passwords.get(0),
+                        "Current password too short"),
+                Arguments.of(
+                        String.valueOf('a').repeat(TestUtils.passwordMaxSize + 1),
+                        passwords.get(1),
+                        "Current password too long"),
+                Arguments.of(
+                        passwords.get(2),
+                        String.valueOf('a').repeat(TestUtils.passwordMinSize - 1),
+                        "New password too short"),
+                Arguments.of(
+                        passwords.get(3),
+                        String.valueOf('a').repeat(TestUtils.passwordMaxSize + 1),
+                        "New password too long")
+        );
+    }
+
+    @DisplayName("Authorized user's password update")
     @Test
-    void setPassword_UserRole_Ok() throws Exception {
-        List<String> passwords = TestUtils.getPasswords(2);
+    void setPassword_shouldReturn200_whenUserPasswordSuccessfullyUpdated() throws Exception {
+        List<String> passwords = TestUtils.getDistinctPasswords(2);
         String currentPassword = passwords.get(0);
         String newPassword = passwords.get(1);
+        JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
 
-        UserEntity user = TestUtils.getRandomUserFrom(users);
-        user.setPassword(passwordEncoder.encode(currentPassword))
-                .setRole(Role.USER);
-        userRepository.save(user);
+        UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
+        userRepository.save(user.setPassword(passwordEncoder.encode(currentPassword)));
+        Authentication authentication = TestUtils.getAuthenticationFor(user);
 
-        Authentication authentication = TestUtils.createAuthenticationFor(user);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        JSONObject newData = new JSONObject();
-        newData.put("currentPassword", currentPassword);
-        newData.put("newPassword", newPassword);
-
-        mockMvc.perform(post("/users/set_password")
+        mockMvc.perform(post(URL_POST_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(newData.toString()))
+                        .content(newPasswordDto.toString()))
                 .andExpectAll(
                         authenticated().withAuthenticationName(authentication.getName()),
-                        status().isOk());
-
+                        status().isOk()
+                );
         String updatedPassword = userRepository.findById(user.getId()).orElseThrow().getPassword();
         assertTrue(passwordEncoder.matches(newPassword, updatedPassword));
     }
 
-    @DisplayName("Password update by authenticated user with ADMIN role")
+    @DisplayName("Authorized admin's password update")
     @Test
-    void setPassword_AdminRole_Ok() throws Exception {
-        List<String> passwords = TestUtils.getPasswords(2);
+    void setPassword_shouldReturn200_whenAdminPasswordSuccessfullyUpdated() throws Exception {
+        List<String> passwords = TestUtils.getDistinctPasswords(2);
         String currentPassword = passwords.get(0);
         String newPassword = passwords.get(1);
+        JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
 
-        UserEntity user = TestUtils.getRandomUserFrom(users);
-        user.setPassword(passwordEncoder.encode(currentPassword))
-                .setRole(Role.ADMIN);
-        userRepository.save(user);
+        UserEntity admin = userRepository.save(predefinedAdmin.setPassword(passwordEncoder.encode(currentPassword)));
+        Authentication authentication = TestUtils.getAuthenticationFor(admin);
 
-        Authentication authentication = TestUtils.createAuthenticationFor(user);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        JSONObject newData = new JSONObject();
-        newData.put("currentPassword", currentPassword);
-        newData.put("newPassword", newPassword);
-
-        mockMvc.perform(post("/users/set_password")
+        mockMvc.perform(post(URL_POST_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(newData.toString()))
+                        .content(newPasswordDto.toString()))
                 .andExpectAll(
                         authenticated().withAuthenticationName(authentication.getName()),
                         status().isOk());
 
-        String updatedPassword = userRepository.findById(user.getId()).orElseThrow().getPassword();
+        String updatedPassword = userRepository.findById(admin.getId()).orElseThrow().getPassword();
         assertTrue(passwordEncoder.matches(newPassword, updatedPassword));
     }
 
-    @DisplayName("Password change by authorized user with wrong current password")
+    @DisplayName("Authorized user's password update with wrong current password")
     @Test
-    void setPassword_Forbidden() throws Exception {
-        List<String> passwords = TestUtils.getPasswords(2);
+    void setPassword_shouldReturn403_whenWrongCurrentPassword() throws Exception {
+        List<String> passwords = TestUtils.getDistinctPasswords(2);
         String currentPassword = passwords.get(0);
         String newPassword = passwords.get(1);
+        JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
 
-        UserEntity user = TestUtils.getRandomUserFrom(users);
-        Authentication authentication = TestUtils.createAuthenticationFor(user);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        TestUtils.getRandomUserAuthentication(predefinedUsers);
 
-        JSONObject newData = new JSONObject();
-        newData.put("currentPassword", currentPassword);
-        newData.put("newPassword", newPassword);
-
-        mockMvc.perform(post("/users/set_password")
+        mockMvc.perform(post(URL_POST_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(newData.toString()))
+                        .content(newPasswordDto.toString()))
                 .andExpect(status().isForbidden());
     }
 
     @DisplayName("Password change by unauthorized user")
     @Test
-    void setPassword_Unauthorized() throws Exception {
-        List<String> passwords = TestUtils.getPasswords(2);
+    void setPassword_shouldReturn401_whenUnauthorizedUser() throws Exception {
+        List<String> passwords = TestUtils.getDistinctPasswords(2);
         String currentPassword = passwords.get(0);
         String newPassword = passwords.get(1);
+        JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
 
-        JSONObject newData = new JSONObject();
-        newData.put("currentPassword", currentPassword);
-        newData.put("newPassword", newPassword);
-
-        mockMvc.perform(post("/users/set_password")
+        mockMvc.perform(post(URL_POST_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(newData.toString()))
+                        .content(newPasswordDto.toString()))
                 .andExpect(status().isUnauthorized());
     }
 
-    @DisplayName("Obtain user information by an authorized user with the USER role")
+    @DisplayName("Fetch user information as an authorized user")
     @Test
-    void getData_AuthorizedUser() throws Exception {
-        UserEntity user = TestUtils.getRandomUserFrom(users)
-                .setRole(Role.USER);
-        userRepository.save(user);
-        Authentication authentication = TestUtils.createAuthenticationFor(user);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+    void getData_shouldReturnUser_whenRequestFromAuthorizedUser() throws Exception {
+        UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
+        TestUtils.getAuthenticationFor(user);
 
-        UserEntity authUser = userRepository.findByUsername(authentication.getName()).orElseThrow();
-
-        mockMvc.perform(get("/users/me"))
+        mockMvc.perform(get(URL_GET_DATA))
                 .andExpectAll(status().isOk(),
-                        jsonPath("$.id").value(authUser.getId()),
-                        jsonPath("$.username").value(authUser.getUsername()),
-                        jsonPath("$.firstName").value(authUser.getFirstName()),
-                        jsonPath("$.lastName").value(authUser.getLastName()),
-                        jsonPath("$.phone").value(authUser.getPhone()),
-                        jsonPath("$.role").value(authUser.getRole().toString()),
-                        jsonPath("$.image").value(authUser.getImage()));
+                        jsonPath("$.id").value(user.getId()),
+                        jsonPath("$.username").value(user.getUsername()),
+                        jsonPath("$.firstName").value(user.getFirstName()),
+                        jsonPath("$.lastName").value(user.getLastName()),
+                        jsonPath("$.phone").value(user.getPhone()),
+                        jsonPath("$.role").value(user.getRole().toString()),
+                        jsonPath("$.image").value(user.getImage()));
     }
 
-    @DisplayName("Obtain user information by an authorized user with the ADMIN role")
+    @DisplayName("Fetch user information as an authorized admin")
     @Test
-    void getData_AuthorizedAdmin() throws Exception {
-        UserEntity user = TestUtils.getRandomUserFrom(users)
-                .setRole(Role.ADMIN);
-        userRepository.save(user);
-        Authentication authentication = TestUtils.createAuthenticationFor(user);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+    void getData_shouldReturnUser_whenRequestFromAuthorizedAdmin() throws Exception {
+        TestUtils.getAuthenticationFor(predefinedAdmin);
 
-        UserEntity authUser = userRepository.findByUsername(authentication.getName()).orElseThrow();
-
-        mockMvc.perform(get("/users/me"))
+        mockMvc.perform(get(URL_GET_DATA))
                 .andExpectAll(status().isOk(),
-                        jsonPath("$.id").value(authUser.getId()),
-                        jsonPath("$.username").value(authUser.getUsername()),
-                        jsonPath("$.firstName").value(authUser.getFirstName()),
-                        jsonPath("$.lastName").value(authUser.getLastName()),
-                        jsonPath("$.phone").value(authUser.getPhone()),
-                        jsonPath("$.role").value(authUser.getRole().toString()),
-                        jsonPath("$.image").value(authUser.getImage()));
+                        jsonPath("$.id").value(predefinedAdmin.getId()),
+                        jsonPath("$.username").value(predefinedAdmin.getUsername()),
+                        jsonPath("$.firstName").value(predefinedAdmin.getFirstName()),
+                        jsonPath("$.lastName").value(predefinedAdmin.getLastName()),
+                        jsonPath("$.phone").value(predefinedAdmin.getPhone()),
+                        jsonPath("$.role").value(predefinedAdmin.getRole().toString()),
+                        jsonPath("$.image").value(predefinedAdmin.getImage()));
     }
 
-    @DisplayName("Obtain user information by a non-authorized user")
+    @DisplayName("Fetch user information by a non-authorized user")
     @Test
-    void getData_Unauthorized() throws Exception {
-        mockMvc.perform(get("/users/me"))
+    void getData_shouldReturn401_whenRequestFromAuthorizedUser() throws Exception {
+        mockMvc.perform(get(URL_GET_DATA))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @DisplayName("Authorized user's data update with invalid UpdateUser dto")
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("getInvalidUpdateUserDto")
+    void updateData_shouldReturn400_whenInvalidUpdateUserDto(UpdateUser updateUser, String description) throws Exception {
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
+
+        String firstName = updateUser.getFirstName();
+        String LastName = updateUser.getLastName();
+        String phone = updateUser.getPhone();
+        JSONObject newUpdateUserDto = TestUtils.createNewUpdateUserDto(firstName, LastName, phone);
+
+        mockMvc.perform(patch(URL_UPDATE_DATA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(newUpdateUserDto.toString()))
+                .andExpectAll(
+                        status().isBadRequest(),
+                        authenticated().withAuthenticationName(authentication.getName())
+                );
+    }
+
+    private static Stream<Arguments> getInvalidUpdateUserDto() {
+        List<String> firstNames = TestUtils.getFirstNames(3);
+        List<String> lastNames = TestUtils.getLastNames(3);
+        List<String> phones = TestUtils.getPhones(4);
+
+        return Stream.of(
+                Arguments.of(
+                        new UpdateUser()
+                                .setFirstName(String.valueOf('a').repeat(TestUtils.firstNameMinSize - 1))
+                                .setLastName(lastNames.get(0))
+                                .setPhone(phones.get(0)),
+                        "First name too short"),
+                Arguments.of(
+                        new UpdateUser()
+                                .setFirstName(String.valueOf('a').repeat(TestUtils.firstNameMaxSize + 1))
+                                .setLastName(lastNames.get(1))
+                                .setPhone(phones.get(1)),
+                        "First name too long"),
+                Arguments.of(
+                        new UpdateUser()
+                                .setFirstName(firstNames.get(0))
+                                .setLastName(String.valueOf('a').repeat(TestUtils.lastNameMinSize - 1))
+                                .setPhone(phones.get(2)),
+                        "Last name too short"),
+                Arguments.of(
+                        new UpdateUser()
+                                .setFirstName(firstNames.get(1))
+                                .setLastName(String.valueOf('a').repeat(TestUtils.lastNameMaxSize + 1))
+                                .setPhone(phones.get(3)),
+                        "Last name too long"),
+                Arguments.of(
+                        new UpdateUser()
+                                .setFirstName(firstNames.get(2))
+                                .setLastName(lastNames.get(2))
+                                .setPhone("7(959)742-65-56"),
+                        "Phone doesn't match the pattern")
+        );
     }
 
     @DisplayName("Update information of an authorized user")
     @Test
-    void updateData_AuthorizedUser() throws Exception {
-        UserEntity user = TestUtils.getRandomUserFrom(users);
-        Authentication authentication = TestUtils.createAuthenticationFor(user);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+    void updateData_shouldReturnUpdateUser_whenRequestFromAuthorizedUser() throws Exception {
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
 
-        String firstName = TestUtils.getFirstNames(1).get(0);
-        String LastName = TestUtils.getLastNames(1).get(0);
-        String phone = TestUtils.getPhones(1).get(0);
+        String firstName = TestUtils.getFirstNames(1).getFirst();
+        String LastName = TestUtils.getLastNames(1).getFirst();
+        String phone = TestUtils.getPhones(1).getFirst();
+        JSONObject newUpdateUserDto = TestUtils.createNewUpdateUserDto(firstName, LastName, phone);
 
-        JSONObject newData = new JSONObject();
-        newData.put("firstName", firstName);
-        newData.put("lastName", LastName);
-        newData.put("phone", phone);
-
-        mockMvc.perform(patch("/users/me")
+        mockMvc.perform(patch(URL_UPDATE_DATA)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(newData.toString()))
+                        .content(newUpdateUserDto.toString()))
                 .andExpectAll(status().isOk(),
                         authenticated().withAuthenticationName(authentication.getName()),
                         jsonPath("$.firstName").value(firstName),
@@ -247,19 +321,19 @@ public class UserControllerTests {
                         jsonPath("$.phone").value(phone));
     }
 
-    @DisplayName("Update information about by non-authorized user.")
+    @DisplayName("Update information about by non-authorized user")
     @Test
-    void updateData_UnAuthorizedUser() throws Exception {
-        String firstName = TestUtils.getFirstNames(1).get(0);
-        String LastName = TestUtils.getLastNames(1).get(0);
-        String phone = TestUtils.getPhones(1).get(0);
+    void updateData_shouldReturn401_whenRequestFromUnauthorizedUser() throws Exception {
+        String firstName = TestUtils.getFirstNames(1).getFirst();
+        String LastName = TestUtils.getLastNames(1).getFirst();
+        String phone = TestUtils.getPhones(1).getFirst();
 
         JSONObject newData = new JSONObject();
         newData.put("firstName", firstName);
         newData.put("lastName", LastName);
         newData.put("phone", phone);
 
-        mockMvc.perform(patch("/users/me")
+        mockMvc.perform(patch(URL_PATCH_IMAGE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(newData.toString()))
                 .andExpect(status().isUnauthorized());
@@ -267,10 +341,9 @@ public class UserControllerTests {
 
     @DisplayName("Profile image update for an authorized user")
     @Test
-    void updateImage_AuthorizedUser() throws Exception {
-        UserEntity user = TestUtils.getRandomUserFrom(users);
-        Authentication authentication = TestUtils.createAuthenticationFor(user);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+    void updateImage_shouldReturn200AndImage_whenImageSuccessfullyUpdated() throws Exception {
+        UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
+        TestUtils.getAuthenticationFor(user);
 
         MockMultipartFile imageFile = new MockMultipartFile("image", "file1.png", MediaType.IMAGE_PNG_VALUE, "mockImageContent".getBytes());
 
@@ -299,9 +372,9 @@ public class UserControllerTests {
 
     @DisplayName("Profile image update for an non-authorized user")
     @Test
-    void updateImage_UnauthorizedUser() throws Exception {
+    void updateImage_shouldReturn401_whenRequestFromUnauthorizedUser() throws Exception {
         MockMultipartFile imageFile = new MockMultipartFile("image", "file1.png", MediaType.IMAGE_PNG_VALUE, "mockImageContent".getBytes());
-        mockMvc.perform(multipart("/users/me/image")
+        mockMvc.perform(multipart(URL_PATCH_IMAGE)
                         .file(imageFile)
                         .with(request -> {
                                     request.setMethod("PATCH");

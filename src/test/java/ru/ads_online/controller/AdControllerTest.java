@@ -100,8 +100,6 @@ public class AdControllerTest {
     private static List<UserEntity> predefinedUsers;
     private static List<AdEntity> ads;
     private static List<CommentEntity> comments;
-    private static AdRepository adRepositoryStat;
-
 
     @DynamicPropertySource
     static void postgresProperties(DynamicPropertyRegistry registry) {
@@ -127,8 +125,6 @@ public class AdControllerTest {
 
         comments = TestUtils.createComments(NUMBER_OF_TEST_COMMENTS, predefinedUsers, ads);
         commentRepository.saveAll(comments);
-
-        adRepositoryStat = adRepository;
     }
 
     @AfterAll
@@ -327,7 +323,7 @@ public class AdControllerTest {
                         authenticated().withAuthenticationName(authentication.getName()),
                         jsonPath("$.author").value(((UserPrincipal) authentication.getPrincipal()).getUser().getId()),
                         jsonPath("$.image").exists(),
-                        jsonPath("$.id").exists(),
+                        jsonPath("$.pk").exists(),
                         jsonPath("$.price").value(newAd.getPrice()),
                         jsonPath("$.title").value(newAd.getTitle())
                 );

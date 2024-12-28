@@ -20,7 +20,7 @@ public class ImageController {
     private static final Tika tika = new Tika();
 
     @GetMapping("/{id}")
-    public ResponseEntity<byte[]> getImage(@Positive @PathVariable(name = "id") Integer id) {
+    public ResponseEntity<byte[]> getImage(@Positive @PathVariable(name = "id") int id) {
         log.info("Received request to fetch image with id={}", id);
 
         ImageEntity imageEntity = imageService.getImage(id);

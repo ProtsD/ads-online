@@ -15,7 +15,7 @@ public class CreateOrUpdateAd {
     private String title;
     @Min(0)
     @Max(10000000)
-    private Integer price;
+    private int price;
     @NotNull
     @Size(min = 8, max = 64)
     private String description;

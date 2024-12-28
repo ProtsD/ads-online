@@ -47,10 +47,10 @@ public class CommentController {
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(comment.getId())
+                .buildAndExpand(comment.getPk())
                 .toUri();
 
-        log.info("Successfully created comment with id={} for Ad ID={}", comment.getId(), adId);
+        log.info("Successfully created comment with id={} for Ad ID={}", comment.getPk(), adId);
         return ResponseEntity.created(location).body(comment);
     }
 

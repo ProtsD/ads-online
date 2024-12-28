@@ -51,15 +51,15 @@ public class AdController {
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(createdAd.getId())
+                .buildAndExpand(createdAd.getPk())
                 .toUri();
 
-        log.info("Successfully created ad with id={} ", createdAd.getId());
+        log.info("Successfully created ad with id={} ", createdAd.getPk());
         return ResponseEntity.created(location).body(createdAd);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ExtendedAd> getAd(@Positive @PathVariable(name = "id") Integer id) {
+    public ResponseEntity<ExtendedAd> getAd(@Positive @PathVariable(name = "id") int id) {
         log.info("Received request to fetch ad with id={}", id);
         ExtendedAd adInfo = adService.getAd(id);
         log.info("Successfully fetched ad with id={}", id);

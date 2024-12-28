@@ -11,7 +11,7 @@ import lombok.experimental.Accessors;
 public class Ad {
     private int author;
     private String image;
-    private int id;
+    private int pk;
     @Min(0)
     @Max(10000000)
     private int price;

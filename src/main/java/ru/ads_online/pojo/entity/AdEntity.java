@@ -12,10 +12,10 @@ public class AdEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
-    private Integer id;
+    private int id;
 
     @Column(name = "price", nullable = false)
-    private Integer price;
+    private int price;
 
     @Column(name = "title", nullable = false)
     private String title;
