@@ -140,7 +140,7 @@ public class AdControllerTest {
 
     @DisplayName("Fetch all ads as an authorized user")
     @Test
-    void getAllAds_shouldReturnComments_whenRequestFromAuthorizedUser() throws Exception {
+    void getAllAds_shouldReturnAds_whenRequestFromAuthorizedUser() throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         ads = adRepository.findAll();
         String expectedJSON = objectMapper.writeValueAsString(adMapper.toAds(ads));
@@ -155,7 +155,7 @@ public class AdControllerTest {
 
     @DisplayName("Fetch all ads as an unauthorized user")
     @Test
-    void getAllAds_shouldReturnComments_whenRequestFromUnauthorizedUser() throws Exception {
+    void getAllAds_shouldReturnAds_whenRequestFromUnauthorizedUser() throws Exception {
         ads = adRepository.findAll();
         String expectedJSON = objectMapper.writeValueAsString(adMapper.toAds(ads));
 
