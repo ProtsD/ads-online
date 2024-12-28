@@ -122,36 +122,8 @@ public class CommentControllerTest {
         userRepository.deleteAll();
     }
 
-    @DisplayName("Fetch all comments for invalid adId as an authorized user")
-    @ParameterizedTest(name = "{1}")
-    @MethodSource("getInvalidId")
-    void getAllCommentsForAd_shouldTReturn400_whenInvalidAdId(String adId, String caseName) throws Exception {
-        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
-
-        mockMvc.perform(get(URL_GET_COMMENTS, adId))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isBadRequest()
-                );
-    }
-
-    @DisplayName("Fetch all comments for a non-existent ad as an authorized admin")
     @Test
-    void getAllCommentsForAd_shouldTReturn404_whenAdIdDoesNotExist() throws Exception {
-        int nonExistentAdId = TestUtils.getRandomNonExistentId(adRepository);
-        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
-
-        long commentCountBeforeRequest = commentRepository.count();
-        mockMvc.perform(get(URL_GET_COMMENTS, nonExistentAdId))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isNotFound()
-                );
-        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
-    }
-
     @DisplayName("Fetch all comments for an ad as an authorized user")
-    @Test
     void getAllCommentsForAd_shouldReturnComments_whenExists() throws Exception {
         AdEntity ad = TestUtils.getRandomAdFrom(ads);
         Authentication authentication = TestUtils.getAuthenticationFor(ad.getAuthor());
@@ -166,8 +138,21 @@ public class CommentControllerTest {
                 );
     }
 
-    @DisplayName("Fetch all comments for an ad as an unauthorized user")
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("getInvalidId")
+    @DisplayName("Fetch all comments for invalid adId as an authorized user")
+    void getAllCommentsForAd_shouldTReturn400_whenInvalidAdId(String adId, String caseName) throws Exception {
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
+
+        mockMvc.perform(get(URL_GET_COMMENTS, adId))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isBadRequest()
+                );
+    }
+
     @Test
+    @DisplayName("Fetch all comments for an ad as an unauthorized user")
     void getAllCommentsForAd_shouldTReturn401_whenUnauthorizedUser() throws Exception {
         int randomCommentId = TestUtils.getRandomCommentFrom(comments).getId();
 
@@ -178,9 +163,49 @@ public class CommentControllerTest {
                 );
     }
 
-    @DisplayName("Add comment for invalid adId as an authorized user")
+    @Test
+    @DisplayName("Fetch all comments for a non-existent ad as an authorized admin")
+    void getAllCommentsForAd_shouldTReturn404_whenAdIdDoesNotExist() throws Exception {
+        int nonExistentAdId = TestUtils.getRandomNonExistentId(adRepository);
+        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
+
+        long commentCountBeforeRequest = commentRepository.count();
+        mockMvc.perform(get(URL_GET_COMMENTS, nonExistentAdId))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isNotFound()
+                );
+        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
+    }
+
+    @Test
+    @DisplayName("Add comment for an ad as an authorized user")
+    void createComment_shouldTReturn201AndComment_whenCommentSuccessfullyCreated() throws Exception {
+        AdEntity ad = TestUtils.getRandomAdFrom(ads);
+        UserEntity commenter = ad.getAuthor();
+        Authentication authentication = TestUtils.getAuthenticationFor(commenter);
+
+        String commentText = TestUtils.getCommentsText(10, 1).get(0);
+        CreateOrUpdateComment comment = new CreateOrUpdateComment().setText(commentText);
+        String commentJson = objectMapper.writeValueAsString(comment);
+
+        long commentCountBeforeRequest = commentRepository.count();
+        mockMvc.perform(post(URL_POST_COMMENT, ad.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentJson))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isCreated(),
+                        jsonPath("$.text").value(comment.getText()),
+                        jsonPath("$.authorFirstName").value(commenter.getFirstName()),
+                        jsonPath("$.author").value(commenter.getId())
+                );
+        assertEquals(commentCountBeforeRequest + 1, commentRepository.count(), DECREASE_COMMENT_COUNT);
+    }
+
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidId")
+    @DisplayName("Add comment for invalid adId as an authorized user")
     void createComment_shouldTReturn400_whenInvalidAdId(String adId, String caseName) throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
 
@@ -193,9 +218,9 @@ public class CommentControllerTest {
         assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
     }
 
-    @DisplayName("Add comment with invalid comment text for an ad as an authorized user")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidArgumentsForCreateComment")
+    @DisplayName("Add comment with invalid comment text for an ad as an authorized user")
     void createComment_shouldTReturn400_whenInvalidCommentText(String commentText, String caseDescription) throws Exception {
         AdEntity ad = TestUtils.getRandomAdFrom(ads);
         UserEntity commenter = ad.getAuthor();
@@ -223,8 +248,20 @@ public class CommentControllerTest {
         );
     }
 
-    @DisplayName("Add a comment to a non-existent ad as an authorized admin")
     @Test
+    @DisplayName("Add comment for an ad as an unauthorized user")
+    void createComment_shouldTReturn401_whenUnauthorizedUser() throws Exception {
+        AdEntity ad = TestUtils.getRandomAdFrom(ads);
+
+        long commentCountBeforeRequest = commentRepository.count();
+        mockMvc.perform(post(URL_POST_COMMENT, ad.getId())
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
+    }
+
+    @Test
+    @DisplayName("Add a comment to a non-existent ad as an authorized admin")
     void createComment_shouldTReturn404_whenCommentIdDoesNotExist() throws Exception {
         int nonExistentAdId = TestUtils.getRandomNonExistentId(commentRepository);
         Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
@@ -244,105 +281,8 @@ public class CommentControllerTest {
         assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
     }
 
-    @DisplayName("Add comment for an ad as an authorized user")
     @Test
-    void createComment_shouldTReturn201AndComment_whenCommentSuccessfullyCreated() throws Exception {
-        AdEntity ad = TestUtils.getRandomAdFrom(ads);
-        UserEntity commenter = ad.getAuthor();
-        Authentication authentication = TestUtils.getAuthenticationFor(commenter);
-
-        String commentText = TestUtils.getCommentsText(10, 1).get(0);
-        CreateOrUpdateComment comment = new CreateOrUpdateComment().setText(commentText);
-        String commentJson = objectMapper.writeValueAsString(comment);
-
-        long commentCountBeforeRequest = commentRepository.count();
-        mockMvc.perform(post(URL_POST_COMMENT, ad.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(commentJson))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isCreated(),
-                        jsonPath("$.text").value(comment.getText()),
-                        jsonPath("$.authorFirstName").value(commenter.getFirstName()),
-                        jsonPath("$.author").value(commenter.getId())
-                );
-        assertEquals(commentCountBeforeRequest + 1, commentRepository.count(), DECREASE_COMMENT_COUNT);
-    }
-
-    @DisplayName("Add comment for an ad as an unauthorized user")
-    @Test
-    void createComment_shouldTReturn401_whenUnauthorizedUser() throws Exception {
-        AdEntity ad = TestUtils.getRandomAdFrom(ads);
-
-        long commentCountBeforeRequest = commentRepository.count();
-        mockMvc.perform(post(URL_POST_COMMENT, ad.getId())
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isUnauthorized());
-        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
-    }
-
-    @DisplayName("Delete comment for invalid adId as an authorized user")
-    @ParameterizedTest(name = "{1}")
-    @MethodSource("getInvalidId")
-    void deleteComment_shouldTReturn400_whenInvalidAdId(String adId, String caseName) throws Exception {
-        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
-        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
-
-        mockMvc.perform(delete(URL_DELETE_COMMENT, adId, comment.getId()))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isBadRequest()
-                );
-    }
-
-    @DisplayName("Delete comment with invalid commentId as an authorized user")
-    @ParameterizedTest(name = "{1}")
-    @MethodSource("getInvalidId")
-    void deleteComment_shouldTReturn400_whenInvalidCommentId(String commentId, String caseName) throws Exception {
-        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
-        AdEntity ad = TestUtils.getRandomAdFrom(ads);
-
-        mockMvc.perform(delete(URL_DELETE_COMMENT, ad.getId(), commentId))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isBadRequest()
-                );
-    }
-
-    @DisplayName("Delete a non-existent comment as an authorized admin")
-    @Test
-    void deleteComment_shouldTReturn404_whenCommentIdDoesNotExist() throws Exception {
-        AdEntity ad = TestUtils.getRandomAdFrom(ads);
-        int nonExistentCommentId = TestUtils.getRandomNonExistentId(commentRepository);
-        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
-
-        long commentCountBeforeRequest = commentRepository.count();
-        mockMvc.perform(delete(URL_DELETE_COMMENT, ad.getId(), nonExistentCommentId))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isNotFound()
-                );
-        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
-    }
-
-    @DisplayName("Delete comment which doesn't belong to adId as an authorized admin")
-    @Test
-    void deleteComment_shouldTReturn404_whenCommentDoesNotBelongToAd() throws Exception {
-        int nonExistentAdId = TestUtils.getRandomNonExistentId(commentRepository);
-        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
-        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
-
-        long commentCountBeforeRequest = commentRepository.count();
-        mockMvc.perform(delete(URL_DELETE_COMMENT, nonExistentAdId, comment.getId()))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isNotFound()
-                );
-        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
-    }
-
     @DisplayName("Delete one's own comment as an authorized user")
-    @Test
     void deleteComment_shouldTReturn204_whenCommentSuccessfullyDeleted() throws Exception {
         CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
         AdEntity ad = comment.getAdEntity();
@@ -357,27 +297,8 @@ public class CommentControllerTest {
         assertEquals(commentCountBeforeRequest - 1, commentRepository.count(), DECREASE_COMMENT_COUNT);
     }
 
-    @DisplayName("Delete someone else's comment as an authorized user")
     @Test
-    void deleteComment_shouldTReturn403_whenAuthorizedUserIsNotCommentAuthor() throws Exception {
-        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
-        AdEntity ad = comment.getAdEntity();
-        UserEntity user = TestUtils.findDistinctElement(predefinedUsers, comment.getAuthor());
-        Authentication authentication = TestUtils.getAuthenticationFor(user);
-
-        long commentCountBeforeRequest = commentRepository.count();
-        mockMvc.perform(delete(URL_DELETE_COMMENT, ad.getId(), comment.getId()))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isForbidden()
-                );
-        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
-        assertTrue(commentRepository.existsById(comment.getId()), "The comment should still exist");
-
-    }
-
     @DisplayName("Delete someone else's comment as an authorized admin")
-    @Test
     void deleteComment_shouldTReturn204_whenCommentSuccessfullyDeletedByAdmin() throws Exception {
         CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
         AdEntity ad = comment.getAdEntity();
@@ -392,46 +313,76 @@ public class CommentControllerTest {
         assertEquals(commentCountBeforeRequest - 1, commentRepository.count(), DECREASE_COMMENT_COUNT);
     }
 
-    @DisplayName("Update comment for invalid adId as an authorized user")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidId")
-    void updateComment_shouldTReturn400_whenInvalidAdId(String adId, String caseName) throws Exception {
+    @DisplayName("Delete comment for invalid adId as an authorized user")
+    void deleteComment_shouldTReturn400_whenInvalidAdId(String adId, String caseName) throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
 
-        mockMvc.perform(patch(URL_PATCH_COMMENT, adId, comment.getId()))
+        mockMvc.perform(delete(URL_DELETE_COMMENT, adId, comment.getId()))
                 .andExpectAll(
                         authenticated().withAuthenticationName(authentication.getName()),
                         status().isBadRequest()
                 );
     }
 
-    @DisplayName("Update comment with invalid commentId as an authorized user")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidId")
-    void updateComment_shouldTReturn400_whenInvalidCommentId(String commentId, String caseName) throws Exception {
+    @DisplayName("Delete comment with invalid commentId as an authorized user")
+    void deleteComment_shouldTReturn400_whenInvalidCommentId(String commentId, String caseName) throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
         AdEntity ad = TestUtils.getRandomAdFrom(ads);
 
-        mockMvc.perform(patch(URL_PATCH_COMMENT, ad.getId(), commentId))
+        mockMvc.perform(delete(URL_DELETE_COMMENT, ad.getId(), commentId))
                 .andExpectAll(
                         authenticated().withAuthenticationName(authentication.getName()),
                         status().isBadRequest()
                 );
     }
 
-    @DisplayName("Update a non-existent comment as an authorized admin")
     @Test
-    void updateComment_shouldTReturn404_whenCommentIdDoesNotExist() throws Exception {
+    @DisplayName("Delete one's own comment as an unauthorized user")
+    void deleteComment_shouldTReturn401_whenUnauthorizedUser() throws Exception {
+        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
+        AdEntity ad = comment.getAdEntity();
+
+        long commentCountBeforeRequest = commentRepository.count();
+        mockMvc.perform(delete(URL_DELETE_COMMENT, ad.getId(), comment.getId()))
+                .andExpectAll(
+                        unauthenticated(),
+                        status().isUnauthorized()
+                );
+        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
+    }
+
+    @Test
+    @DisplayName("Delete someone else's comment as an authorized user")
+    void deleteComment_shouldTReturn403_whenAuthorizedUserIsNotCommentAuthor() throws Exception {
+        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
+        AdEntity ad = comment.getAdEntity();
+        UserEntity user = TestUtils.findDistinctElement(predefinedUsers, comment.getAuthor());
+        Authentication authentication = TestUtils.getAuthenticationFor(user);
+
+        long commentCountBeforeRequest = commentRepository.count();
+        mockMvc.perform(delete(URL_DELETE_COMMENT, ad.getId(), comment.getId()))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isForbidden()
+                );
+        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
+        assertTrue(commentRepository.existsById(comment.getId()), "The comment should still exist");
+    }
+
+    @Test
+    @DisplayName("Delete a non-existent comment as an authorized admin")
+    void deleteComment_shouldTReturn404_whenCommentIdDoesNotExist() throws Exception {
         AdEntity ad = TestUtils.getRandomAdFrom(ads);
         int nonExistentCommentId = TestUtils.getRandomNonExistentId(commentRepository);
         Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
-        String commentJson = TestUtils.getRandomCommentDtoJson(objectMapper);
 
         long commentCountBeforeRequest = commentRepository.count();
-        mockMvc.perform(patch(URL_PATCH_COMMENT, ad.getId(), nonExistentCommentId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(commentJson))
+        mockMvc.perform(delete(URL_DELETE_COMMENT, ad.getId(), nonExistentCommentId))
                 .andExpectAll(
                         authenticated().withAuthenticationName(authentication.getName()),
                         status().isNotFound()
@@ -439,18 +390,15 @@ public class CommentControllerTest {
         assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
     }
 
-    @DisplayName("Update comment which doesn't belong to adId as an authorized admin")
     @Test
-    void updateComment_shouldTReturn404_whenCommentDoesNotBelongToAd() throws Exception {
+    @DisplayName("Delete comment which doesn't belong to adId as an authorized admin")
+    void deleteComment_shouldTReturn404_whenCommentDoesNotBelongToAd() throws Exception {
         int nonExistentAdId = TestUtils.getRandomNonExistentId(commentRepository);
         CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
         Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
-        String commentJson = TestUtils.getRandomCommentDtoJson(objectMapper);
 
         long commentCountBeforeRequest = commentRepository.count();
-        mockMvc.perform(patch(URL_PATCH_COMMENT, nonExistentAdId, comment.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(commentJson))
+        mockMvc.perform(delete(URL_DELETE_COMMENT, nonExistentAdId, comment.getId()))
                 .andExpectAll(
                         authenticated().withAuthenticationName(authentication.getName()),
                         status().isNotFound()
@@ -458,9 +406,9 @@ public class CommentControllerTest {
         assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
     }
 
-    @DisplayName("Updating one's own comment as an authorized user")
     @Test
-    void updateComment_shouldReturnComment_whenCommentSuccessfullyUpdated() throws Exception {
+    @DisplayName("Updating one's own comment as an authorized user")
+    void updateComment_shouldReturnComment_whenCommentSuccessfullyUpdatedByUser() throws Exception {
         CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
         AdEntity ad = comment.getAdEntity();
         Authentication authentication = TestUtils.getAuthenticationFor(comment.getAuthor());
@@ -480,8 +428,66 @@ public class CommentControllerTest {
                 );
     }
 
-    @DisplayName("Updating someone else's comment as an authorized user")
     @Test
+    @DisplayName("Updating someone else's comment as an authorized admin")
+    void updateComment_shouldReturnComment_whenCommentSuccessfullyUpdatedByAdmin() throws Exception {
+        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
+        AdEntity ad = comment.getAdEntity();
+        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
+        String commentJson = TestUtils.getRandomCommentDtoJson(objectMapper);
+
+        mockMvc.perform(patch(URL_PATCH_COMMENT, ad.getId(), comment.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentJson))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isOk()
+                );
+    }
+
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("getInvalidId")
+    @DisplayName("Update comment for invalid adId as an authorized user")
+    void updateComment_shouldTReturn400_whenInvalidAdId(String adId, String caseName) throws Exception {
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
+        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
+
+        mockMvc.perform(patch(URL_PATCH_COMMENT, adId, comment.getId()))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isBadRequest()
+                );
+    }
+
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("getInvalidId")
+    @DisplayName("Update comment with invalid commentId as an authorized user")
+    void updateComment_shouldTReturn400_whenInvalidCommentId(String commentId, String caseName) throws Exception {
+        Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
+        AdEntity ad = TestUtils.getRandomAdFrom(ads);
+
+        mockMvc.perform(patch(URL_PATCH_COMMENT, ad.getId(), commentId))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isBadRequest()
+                );
+    }
+
+    @Test
+    @DisplayName("Updating one's own comment as an unauthorized user")
+    void updateComment_shouldTReturn401_whenUnauthorizedUser() throws Exception {
+        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
+        AdEntity ad = comment.getAdEntity();
+
+        mockMvc.perform(patch(URL_PATCH_COMMENT, ad.getId(), comment.getId()))
+                .andExpectAll(
+                        unauthenticated(),
+                        status().isUnauthorized()
+                );
+    }
+
+    @Test
+    @DisplayName("Updating someone else's comment as an authorized user")
     void updateComment_shouldTReturn403_whenAuthorizedUserIsNotCommentAuthor() throws Exception {
         CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
         AdEntity ad = comment.getAdEntity();
@@ -498,21 +504,42 @@ public class CommentControllerTest {
                 );
     }
 
-    @DisplayName("Updating someone else's comment as an authorized admin")
     @Test
-    void updateComment_shouldReturnComment_whenCommentSuccessfullyUpdatedByAdmin() throws Exception {
-        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
-        AdEntity ad = comment.getAdEntity();
+    @DisplayName("Update a non-existent comment as an authorized admin")
+    void updateComment_shouldTReturn404_whenCommentIdDoesNotExist() throws Exception {
+        AdEntity ad = TestUtils.getRandomAdFrom(ads);
+        int nonExistentCommentId = TestUtils.getRandomNonExistentId(commentRepository);
         Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
         String commentJson = TestUtils.getRandomCommentDtoJson(objectMapper);
 
-        mockMvc.perform(patch(URL_PATCH_COMMENT, ad.getId(), comment.getId())
+        long commentCountBeforeRequest = commentRepository.count();
+        mockMvc.perform(patch(URL_PATCH_COMMENT, ad.getId(), nonExistentCommentId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(commentJson))
                 .andExpectAll(
                         authenticated().withAuthenticationName(authentication.getName()),
-                        status().isOk()
+                        status().isNotFound()
                 );
+        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
+    }
+
+    @Test
+    @DisplayName("Update comment which doesn't belong to adId as an authorized admin")
+    void updateComment_shouldTReturn404_whenCommentDoesNotBelongToAd() throws Exception {
+        int nonExistentAdId = TestUtils.getRandomNonExistentId(commentRepository);
+        CommentEntity comment = TestUtils.getRandomCommentFrom(comments);
+        Authentication authentication = TestUtils.getAuthenticationFor(predefinedAdmin);
+        String commentJson = TestUtils.getRandomCommentDtoJson(objectMapper);
+
+        long commentCountBeforeRequest = commentRepository.count();
+        mockMvc.perform(patch(URL_PATCH_COMMENT, nonExistentAdId, comment.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentJson))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isNotFound()
+                );
+        assertEquals(commentCountBeforeRequest, commentRepository.count(), REMAIN_COMMENT_COUNT);
     }
 
     static Stream<Arguments> getInvalidId() {
