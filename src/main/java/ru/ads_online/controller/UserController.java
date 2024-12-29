@@ -1,5 +1,10 @@
 package ru.ads_online.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -19,13 +24,24 @@ import ru.ads_online.service.UserService;
 public class UserController {
     private final UserService userService;
 
-    @PostMapping("/set_password")
+    @Operation(summary = "Password update", tags = {"Users"})
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "OK", content = @Content()),
+            @ApiResponse(responseCode = "400", description = "Bad request", content = @Content()),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content()),
+            @ApiResponse(responseCode = "403", description = "Forbidden", content = @Content())})
+    @PatchMapping("/set_password")
     public ResponseEntity<?> setPassword(Authentication authentication, @RequestBody @Valid NewPassword newPassword) {
         userService.setPassword(authentication, newPassword);
 
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Get information about the authorized user", tags = {"Users"})
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "OK", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = User.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request", content = @Content()),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content())})
     @GetMapping("/me")
     public ResponseEntity<User> getData(Authentication authentication) {
         User user = userService.getData(authentication);
@@ -33,6 +49,11 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
 
+    @Operation(summary = "Update information about the authorized user", tags = {"Users"})
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "OK", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = UpdateUser.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request", content = @Content()),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content())})
     @PatchMapping("/me")
     public ResponseEntity<UpdateUser> updateData(Authentication authentication, @RequestBody @Valid UpdateUser updateUser) {
         UpdateUser updateUserReturn = userService.updateData(authentication, updateUser);
@@ -40,6 +61,10 @@ public class UserController {
         return ResponseEntity.ok(updateUserReturn);
     }
 
+    @Operation(summary = "Update the avatar of the authorized user", tags = {"Users"})
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "OK", content = @Content()),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content())})
     @PatchMapping(value = "/me/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateImage(Authentication authentication, @RequestParam MultipartFile image) {
         userService.updateImage(authentication, image);

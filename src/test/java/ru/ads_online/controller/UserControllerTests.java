@@ -51,7 +51,7 @@ public class UserControllerTests {
     private MockMvc mockMvc;
     @Autowired
     private PasswordEncoder passwordEncoder;
-    private final static String URL_POST_PASSWORD = "/users/set_password";
+    private final static String URL_PATCH_PASSWORD = "/users/set_password";
     private final static String URL_GET_DATA = "/users/me";
     private final static String URL_UPDATE_DATA = "/users/me";
     private final static String URL_PATCH_IMAGE = "/users/me/image";
@@ -95,7 +95,7 @@ public class UserControllerTests {
         userRepository.save(user.setPassword(passwordEncoder.encode(currentPassword)));
         TestUtils.getAuthenticationFor(user);
 
-        mockMvc.perform(post(URL_POST_PASSWORD)
+        mockMvc.perform(patch(URL_PATCH_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(newPasswordDto.toString()))
                 .andExpectAll(
@@ -139,7 +139,7 @@ public class UserControllerTests {
         userRepository.save(user.setPassword(passwordEncoder.encode(currentPassword)));
         Authentication authentication = TestUtils.getAuthenticationFor(user);
 
-        mockMvc.perform(post(URL_POST_PASSWORD)
+        mockMvc.perform(patch(URL_PATCH_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(newPasswordDto.toString()))
                 .andExpectAll(
@@ -161,7 +161,7 @@ public class UserControllerTests {
         UserEntity admin = userRepository.save(predefinedAdmin.setPassword(passwordEncoder.encode(currentPassword)));
         Authentication authentication = TestUtils.getAuthenticationFor(admin);
 
-        mockMvc.perform(post(URL_POST_PASSWORD)
+        mockMvc.perform(patch(URL_PATCH_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(newPasswordDto.toString()))
                 .andExpectAll(
@@ -182,7 +182,7 @@ public class UserControllerTests {
 
         TestUtils.getRandomUserAuthentication(predefinedUsers);
 
-        mockMvc.perform(post(URL_POST_PASSWORD)
+        mockMvc.perform(patch(URL_PATCH_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(newPasswordDto.toString()))
                 .andExpect(status().isForbidden());
@@ -196,7 +196,7 @@ public class UserControllerTests {
         String newPassword = passwords.get(1);
         JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
 
-        mockMvc.perform(post(URL_POST_PASSWORD)
+        mockMvc.perform(patch(URL_PATCH_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(newPasswordDto.toString()))
                 .andExpect(status().isUnauthorized());
