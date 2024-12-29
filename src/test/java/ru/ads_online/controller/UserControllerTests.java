@@ -85,9 +85,54 @@ public class UserControllerTests {
         userRepository.deleteAll();
     }
 
-    @DisplayName("Authorized user's password update with invalid NewPassword dto")
+    @Test
+    @DisplayName("Authorized user's password update")
+    void setPassword_shouldReturn200_whenUserPasswordSuccessfullyUpdated() throws Exception {
+        List<String> passwords = TestUtils.getDistinctPasswords(2);
+        String currentPassword = passwords.get(0);
+        String newPassword = passwords.get(1);
+        JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
+
+        UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
+        userRepository.save(user.setPassword(passwordEncoder.encode(currentPassword)));
+        Authentication authentication = TestUtils.getAuthenticationFor(user);
+
+        mockMvc.perform(patch(URL_PATCH_PASSWORD)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(newPasswordDto.toString()))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isOk()
+                );
+        String updatedPassword = userRepository.findById(user.getId()).orElseThrow().getPassword();
+        assertTrue(passwordEncoder.matches(newPassword, updatedPassword));
+    }
+
+    @Test
+    @DisplayName("Authorized admin's password update")
+    void setPassword_shouldReturn200_whenAdminPasswordSuccessfullyUpdated() throws Exception {
+        List<String> passwords = TestUtils.getDistinctPasswords(2);
+        String currentPassword = passwords.get(0);
+        String newPassword = passwords.get(1);
+        JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
+
+        UserEntity admin = userRepository.save(predefinedAdmin.setPassword(passwordEncoder.encode(currentPassword)));
+        Authentication authentication = TestUtils.getAuthenticationFor(admin);
+
+        mockMvc.perform(patch(URL_PATCH_PASSWORD)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(newPasswordDto.toString()))
+                .andExpectAll(
+                        authenticated().withAuthenticationName(authentication.getName()),
+                        status().isOk());
+
+        String updatedPassword = userRepository.findById(admin.getId()).orElseThrow().getPassword();
+        assertTrue(passwordEncoder.matches(newPassword, updatedPassword));
+    }
+
     @ParameterizedTest(name = "{2}")
     @MethodSource("getInvalidNewPassword")
+    @DisplayName("Authorized user's password update with invalid NewPassword dto")
     void setPassword_shouldReturn400_whenInvalidNewPasswordDto(String currentPassword, String newPassword, String description) throws Exception {
         JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
 
@@ -127,53 +172,22 @@ public class UserControllerTests {
         );
     }
 
-    @DisplayName("Authorized user's password update")
     @Test
-    void setPassword_shouldReturn200_whenUserPasswordSuccessfullyUpdated() throws Exception {
+    @DisplayName("Password change by unauthorized user")
+    void setPassword_shouldReturn401_whenUnauthorizedUser() throws Exception {
         List<String> passwords = TestUtils.getDistinctPasswords(2);
         String currentPassword = passwords.get(0);
         String newPassword = passwords.get(1);
         JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
 
-        UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
-        userRepository.save(user.setPassword(passwordEncoder.encode(currentPassword)));
-        Authentication authentication = TestUtils.getAuthenticationFor(user);
-
         mockMvc.perform(patch(URL_PATCH_PASSWORD)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(newPasswordDto.toString()))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isOk()
-                );
-        String updatedPassword = userRepository.findById(user.getId()).orElseThrow().getPassword();
-        assertTrue(passwordEncoder.matches(newPassword, updatedPassword));
+                .andExpect(status().isUnauthorized());
     }
 
-    @DisplayName("Authorized admin's password update")
     @Test
-    void setPassword_shouldReturn200_whenAdminPasswordSuccessfullyUpdated() throws Exception {
-        List<String> passwords = TestUtils.getDistinctPasswords(2);
-        String currentPassword = passwords.get(0);
-        String newPassword = passwords.get(1);
-        JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
-
-        UserEntity admin = userRepository.save(predefinedAdmin.setPassword(passwordEncoder.encode(currentPassword)));
-        Authentication authentication = TestUtils.getAuthenticationFor(admin);
-
-        mockMvc.perform(patch(URL_PATCH_PASSWORD)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(newPasswordDto.toString()))
-                .andExpectAll(
-                        authenticated().withAuthenticationName(authentication.getName()),
-                        status().isOk());
-
-        String updatedPassword = userRepository.findById(admin.getId()).orElseThrow().getPassword();
-        assertTrue(passwordEncoder.matches(newPassword, updatedPassword));
-    }
-
     @DisplayName("Authorized user's password update with wrong current password")
-    @Test
     void setPassword_shouldReturn403_whenWrongCurrentPassword() throws Exception {
         List<String> passwords = TestUtils.getDistinctPasswords(2);
         String currentPassword = passwords.get(0);
@@ -188,23 +202,9 @@ public class UserControllerTests {
                 .andExpect(status().isForbidden());
     }
 
-    @DisplayName("Password change by unauthorized user")
     @Test
-    void setPassword_shouldReturn401_whenUnauthorizedUser() throws Exception {
-        List<String> passwords = TestUtils.getDistinctPasswords(2);
-        String currentPassword = passwords.get(0);
-        String newPassword = passwords.get(1);
-        JSONObject newPasswordDto = TestUtils.createNewPasswordDto(currentPassword, newPassword);
-
-        mockMvc.perform(patch(URL_PATCH_PASSWORD)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(newPasswordDto.toString()))
-                .andExpect(status().isUnauthorized());
-    }
-
     @DisplayName("Fetch user information as an authorized user")
-    @Test
-    void getData_shouldReturnUser_whenRequestFromAuthorizedUser() throws Exception {
+    void getData_shouldReturn200AndUser_whenRequestFromAuthorizedUser() throws Exception {
         UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
         TestUtils.getAuthenticationFor(user);
 
@@ -219,9 +219,9 @@ public class UserControllerTests {
                         jsonPath("$.image").value(user.getImage()));
     }
 
-    @DisplayName("Fetch user information as an authorized admin")
     @Test
-    void getData_shouldReturnUser_whenRequestFromAuthorizedAdmin() throws Exception {
+    @DisplayName("Fetch user information as an authorized admin")
+    void getData_shouldReturn200AndUser_whenRequestFromAuthorizedAdmin() throws Exception {
         TestUtils.getAuthenticationFor(predefinedAdmin);
 
         mockMvc.perform(get(URL_GET_DATA))
@@ -235,16 +235,9 @@ public class UserControllerTests {
                         jsonPath("$.image").value(predefinedAdmin.getImage()));
     }
 
-    @DisplayName("Fetch user information by a non-authorized user")
-    @Test
-    void getData_shouldReturn401_whenRequestFromAuthorizedUser() throws Exception {
-        mockMvc.perform(get(URL_GET_DATA))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @DisplayName("Authorized user's data update with invalid UpdateUser dto")
     @ParameterizedTest(name = "{1}")
     @MethodSource("getInvalidUpdateUserDto")
+    @DisplayName("Authorized user's data update with invalid UpdateUser dto")
     void updateData_shouldReturn400_whenInvalidUpdateUserDto(UpdateUser updateUser, String description) throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
 
@@ -301,9 +294,16 @@ public class UserControllerTests {
         );
     }
 
-    @DisplayName("Update information of an authorized user")
     @Test
-    void updateData_shouldReturnUpdateUser_whenRequestFromAuthorizedUser() throws Exception {
+    @DisplayName("Fetch user information by a non-authorized user")
+    void getData_shouldReturn401_whenRequestFromAuthorizedUser() throws Exception {
+        mockMvc.perform(get(URL_GET_DATA))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Update information of an authorized user")
+    void updateData_shouldReturn200AndUpdateUser_whenRequestFromAuthorizedUser() throws Exception {
         Authentication authentication = TestUtils.getRandomUserAuthentication(predefinedUsers);
 
         String firstName = TestUtils.getFirstNames(1).getFirst();
@@ -321,8 +321,8 @@ public class UserControllerTests {
                         jsonPath("$.phone").value(phone));
     }
 
-    @DisplayName("Update information about by non-authorized user")
     @Test
+    @DisplayName("Update information about by non-authorized user")
     void updateData_shouldReturn401_whenRequestFromUnauthorizedUser() throws Exception {
         String firstName = TestUtils.getFirstNames(1).getFirst();
         String LastName = TestUtils.getLastNames(1).getFirst();
@@ -339,8 +339,8 @@ public class UserControllerTests {
                 .andExpect(status().isUnauthorized());
     }
 
-    @DisplayName("Profile image update for an authorized user")
     @Test
+    @DisplayName("Profile image update for an authorized user")
     void updateImage_shouldReturn200AndImage_whenImageSuccessfullyUpdated() throws Exception {
         UserEntity user = TestUtils.getRandomUserFrom(predefinedUsers);
         TestUtils.getAuthenticationFor(user);
@@ -370,8 +370,8 @@ public class UserControllerTests {
         assertArrayEquals(imageFile.getBytes(), imageBytesFromDb);
     }
 
-    @DisplayName("Profile image update for an non-authorized user")
     @Test
+    @DisplayName("Profile image update for an non-authorized user")
     void updateImage_shouldReturn401_whenRequestFromUnauthorizedUser() throws Exception {
         MockMultipartFile imageFile = new MockMultipartFile("image", "file1.png", MediaType.IMAGE_PNG_VALUE, "mockImageContent".getBytes());
         mockMvc.perform(multipart(URL_PATCH_IMAGE)
