@@ -2,7 +2,6 @@ package ru.ads_online.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,26 +29,27 @@ public class UserServiceImpl implements UserService {
     private final ImageService imageService;
 
     @Override
-    public void setPassword(Authentication authentication, NewPassword newPassword) {
-        UserEntity currentUser = ((UserPrincipal) authentication.getPrincipal()).getUser();
+    public void setPassword(UserPrincipal userDetails, NewPassword newPassword) {
+        UserEntity currentUser = userDetails.getUser();
         if (passwordEncoder.matches(newPassword.getCurrentPassword(), currentUser.getPassword())) {
             currentUser.setPassword(passwordEncoder.encode(newPassword.getNewPassword()));
             userRepository.save(currentUser);
         } else {
-            throw new ForbiddenException("Wrong password");
+            String message = "Wrong password";
+            log.warn(message);
+            throw new ForbiddenException(message);
         }
     }
 
     @Override
-    public User getData(Authentication authentication) {
-        UserEntity currentUser = ((UserPrincipal) authentication.getPrincipal()).getUser();
+    public User getData(UserPrincipal userDetails) {
+        UserEntity currentUser = userDetails.getUser();
         return userMapper.toUser(currentUser);
     }
 
     @Override
-    public UpdateUser updateData(Authentication authentication, UpdateUser updateUser) {
-        UserEntity currentUser = ((UserPrincipal) authentication.getPrincipal())
-                .getUser()
+    public UpdateUser updateData(UserPrincipal userDetails, UpdateUser updateUser) {
+        UserEntity currentUser = userDetails.getUser()
                 .setFirstName(updateUser.getFirstName())
                 .setLastName(updateUser.getLastName())
                 .setPhone(updateUser.getPhone());
@@ -58,26 +58,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void updateImage(Authentication authentication, MultipartFile image) {
-        UserEntity currentUser = ((UserPrincipal) authentication.getPrincipal()).getUser();
+    public void updateImage(UserPrincipal userDetails, MultipartFile image) throws IOException {
+        UserEntity currentUser = userDetails.getUser();
         ImageEntity imageEntity;
 
-        try {
             byte[] imageBytes = image.getBytes();
 
             if (currentUser.getImage() == null) {
                 imageEntity = imageService.uploadImage(imageBytes);
             } else {
-                int imageId =  Integer.parseInt(currentUser.getImage().replaceAll(ImageService.IMAGE_URL_PREFIX, ""));
+                int imageId = Integer.parseInt(currentUser.getImage().replaceAll(ImageService.IMAGE_URL_PREFIX, ""));
                 imageEntity = imageService.updateImage(imageId, imageBytes);
             }
 
             String imageURL = ImageService.IMAGE_URL_PREFIX + imageEntity.getId();
             currentUser.setImage(imageURL);
             userRepository.save(currentUser);
-
-        } catch (IOException | NumberFormatException e) {
-            log.error("Failed to update image for user {}: {}", currentUser.getId(), e.getMessage());
-        }
     }
 }

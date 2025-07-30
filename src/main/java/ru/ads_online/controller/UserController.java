@@ -11,12 +11,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.ads_online.pojo.dto.user.NewPassword;
 import ru.ads_online.pojo.dto.user.UpdateUser;
 import ru.ads_online.pojo.dto.user.User;
+import ru.ads_online.security.UserPrincipal;
 import ru.ads_online.service.UserService;
+
+import java.io.IOException;
 
 @CrossOrigin(value = "http://localhost:3000")
 @RestController
@@ -33,9 +37,14 @@ public class UserController {
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content()),
             @ApiResponse(responseCode = "403", description = "Forbidden", content = @Content())})
     @PatchMapping("/set_password")
-    public ResponseEntity<?> setPassword(Authentication authentication, @RequestBody @Valid NewPassword newPassword) {
-        userService.setPassword(authentication, newPassword);
+    public ResponseEntity<?> setPassword(@AuthenticationPrincipal UserPrincipal userDetails,
+                                         @RequestBody @Valid NewPassword newPassword) {
+        String username = userDetails.getUser().getUsername();
+        log.info("Received request to update password from user {}", username);
 
+        userService.setPassword(userDetails, newPassword);
+
+        log.info("Password successfully updated for user {}", username);
         return ResponseEntity.ok().build();
     }
 
@@ -45,9 +54,13 @@ public class UserController {
             @ApiResponse(responseCode = "400", description = "Bad request", content = @Content()),
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content())})
     @GetMapping("/me")
-    public ResponseEntity<User> getData(Authentication authentication) {
-        User user = userService.getData(authentication);
+    public ResponseEntity<User> getData(@AuthenticationPrincipal UserPrincipal userDetails) {
+        String username = userDetails.getUser().getUsername();
+        log.info("Received request to get user details from user {}", username);
 
+        User user = userService.getData(userDetails);
+
+        log.info("Successfully fetched user details for {}", username);
         return ResponseEntity.ok(user);
     }
 
@@ -57,9 +70,14 @@ public class UserController {
             @ApiResponse(responseCode = "400", description = "Bad request", content = @Content()),
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content())})
     @PatchMapping("/me")
-    public ResponseEntity<UpdateUser> updateData(Authentication authentication, @RequestBody @Valid UpdateUser updateUser) {
-        UpdateUser updateUserReturn = userService.updateData(authentication, updateUser);
+    public ResponseEntity<UpdateUser> updateData(@AuthenticationPrincipal UserPrincipal userDetails,
+                                                 @RequestBody @Valid UpdateUser updateUser) {
+        String username = userDetails.getUser().getUsername();
+        log.info("Received request to update user details from user {}", username);
 
+        UpdateUser updateUserReturn = userService.updateData(userDetails, updateUser);
+
+        log.info("Information successfully updated for user {}", username);
         return ResponseEntity.ok(updateUserReturn);
     }
 
@@ -68,9 +86,14 @@ public class UserController {
             @ApiResponse(responseCode = "200", description = "OK", content = @Content()),
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content())})
     @PatchMapping(value = "/me/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateImage(Authentication authentication, @RequestParam MultipartFile image) {
-        userService.updateImage(authentication, image);
+    public ResponseEntity<?> updateImage(@AuthenticationPrincipal UserPrincipal userDetails,
+                                         @RequestParam MultipartFile image) throws IOException {
+        String username = userDetails.getUser().getUsername();
+        log.info("Received request to update avatar from user {}", username);
 
+        userService.updateImage(userDetails, image);
+
+        log.info("Avatar successfully updated for user {}", username);
         return ResponseEntity.ok().build();
     }
 }

@@ -5,13 +5,16 @@ import org.springframework.web.multipart.MultipartFile;
 import ru.ads_online.pojo.dto.user.NewPassword;
 import ru.ads_online.pojo.dto.user.UpdateUser;
 import ru.ads_online.pojo.dto.user.User;
+import ru.ads_online.security.UserPrincipal;
+
+import java.io.IOException;
 
 public interface UserService {
-    void setPassword(Authentication authentication, NewPassword newPassword);
+    void setPassword(UserPrincipal userDetails, NewPassword newPassword);
 
-    User getData(Authentication authentication);
+    User getData(UserPrincipal userDetails);
 
-    UpdateUser updateData(Authentication authentication, UpdateUser updateUser);
+    UpdateUser updateData(UserPrincipal userDetails, UpdateUser updateUser);
 
-    void updateImage(Authentication authentication, MultipartFile image);
+    void updateImage(UserPrincipal userDetails, MultipartFile image) throws IOException;
 }
