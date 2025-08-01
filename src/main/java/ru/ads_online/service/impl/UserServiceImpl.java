@@ -1,0 +1,78 @@
+package ru.ads_online.service.impl;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import ru.ads_online.exception.ForbiddenException;
+import ru.ads_online.mapper.UserMapper;
+import ru.ads_online.pojo.dto.user.NewPassword;
+import ru.ads_online.pojo.dto.user.UpdateUser;
+import ru.ads_online.pojo.dto.user.User;
+import ru.ads_online.pojo.entity.ImageEntity;
+import ru.ads_online.pojo.entity.UserEntity;
+import ru.ads_online.repository.UserRepository;
+import ru.ads_online.security.UserPrincipal;
+import ru.ads_online.service.ImageService;
+import ru.ads_online.service.UserService;
+
+import java.io.IOException;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class UserServiceImpl implements UserService {
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
+    private final ImageService imageService;
+
+    @Override
+    public void setPassword(UserPrincipal userDetails, NewPassword newPassword) {
+        UserEntity currentUser = userDetails.getUser();
+        if (passwordEncoder.matches(newPassword.getCurrentPassword(), currentUser.getPassword())) {
+            currentUser.setPassword(passwordEncoder.encode(newPassword.getNewPassword()));
+            userRepository.save(currentUser);
+        } else {
+            String message = "Wrong password";
+            log.warn(message);
+            throw new ForbiddenException(message);
+        }
+    }
+
+    @Override
+    public User getData(UserPrincipal userDetails) {
+        UserEntity currentUser = userDetails.getUser();
+        return userMapper.toUser(currentUser);
+    }
+
+    @Override
+    public UpdateUser updateData(UserPrincipal userDetails, UpdateUser updateUser) {
+        UserEntity currentUser = userDetails.getUser()
+                .setFirstName(updateUser.getFirstName())
+                .setLastName(updateUser.getLastName())
+                .setPhone(updateUser.getPhone());
+        userRepository.save(currentUser);
+        return updateUser;
+    }
+
+    @Override
+    public void updateImage(UserPrincipal userDetails, MultipartFile image) throws IOException {
+        UserEntity currentUser = userDetails.getUser();
+        ImageEntity imageEntity;
+
+            byte[] imageBytes = image.getBytes();
+
+            if (currentUser.getImage() == null) {
+                imageEntity = imageService.uploadImage(imageBytes);
+            } else {
+                int imageId = Integer.parseInt(currentUser.getImage().replaceAll(ImageService.IMAGE_URL_PREFIX, ""));
+                imageEntity = imageService.updateImage(imageId, imageBytes);
+            }
+
+            String imageURL = ImageService.IMAGE_URL_PREFIX + imageEntity.getId();
+            currentUser.setImage(imageURL);
+            userRepository.save(currentUser);
+    }
+}
