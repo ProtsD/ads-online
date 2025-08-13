@@ -45,30 +45,24 @@ Implemented using **Spring Security**.
 ### 🚀 Installation Steps
 
 #### 1. Install Docker Desktop
+1. [Download Docker Desktop](https://www.docker.com/products/docker-desktop) and install it.
+2. For Windows, install [WSL 2](https://learn.microsoft.com/en-us/windows/wsl/install-manual).
+3. Follow the [official installation guide](https://docs.docker.com/desktop/install/windows-install) to complete setup.
 
-* [Download Docker](https://www.docker.com/products/docker-desktop)
-* [Install WSL 2 (for Windows)](https://learn.microsoft.com/en-us/windows/wsl/install-manual)
-* [Install Docker Desktop](https://docs.docker.com/desktop/install/windows-install/)
+#### 2. Set up the project
+1. Download the `docker-compose.yml` and `Dockerfile`.
+2. Place them in the folder: `C:\ads-online`
+3. Open **Command Prompt**: Press **Win + R**, type `CMD`, and hit Enter.
+4. Navigate to the project directory:
+   ```bash
+   cd C:\ads-online
+5. Start the containers:
+   ```bash
+   docker-compose up
+   
+#### 3. Access the application
+* Frontend: http://localhost:3000
 
-#### 2. Install IntelliJ IDEA
-
-* [Download IntelliJ IDEA Ultimate or Community Edition](https://www.jetbrains.com/idea/download/?section=windows)
-
-#### 3. Clone the Application
-
-* In IntelliJ IDEA:
-  `File -> New -> Project from Version Control`
-* Paste the project URL in the pop-up window:
-  `https://github.com/ProtsD/Ads-Online.git`
-* Click **Clone**
-
-#### 4. Run the Frontend
-
-```bash
-docker run -p 3000:3000 --rm ghcr.io/dmitry-bizin/front-react-avito:v1.18
-```
-
-* Frontend will be available at: [http://localhost:3000](http://localhost:3000)
 
 ---
 
