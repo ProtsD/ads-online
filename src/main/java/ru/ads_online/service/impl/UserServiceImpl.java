@@ -2,6 +2,7 @@ package ru.ads_online.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -64,7 +65,7 @@ public class UserServiceImpl implements UserService {
 
             byte[] imageBytes = image.getBytes();
 
-            if (currentUser.getImage() == null) {
+            if (ObjectUtils.anyNull(currentUser.getImage())) {
                 imageEntity = imageService.uploadImage(imageBytes);
             } else {
                 int imageId = Integer.parseInt(currentUser.getImage().replaceAll(ImageService.IMAGE_URL_PREFIX, ""));

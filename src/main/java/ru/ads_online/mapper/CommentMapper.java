@@ -1,5 +1,6 @@
 package ru.ads_online.mapper;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Component;
 import ru.ads_online.pojo.dto.comment.Comment;
 import ru.ads_online.pojo.dto.comment.Comments;
@@ -10,24 +11,26 @@ import ru.ads_online.pojo.entity.UserEntity;
 
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 
 @Component
 public class CommentMapper {
     public CommentEntity toCommentEntity(CreateOrUpdateComment createOrUpdateComment, UserEntity userEntity, AdEntity adEntity) {
         Date date = new Date();
-        if (Optional.ofNullable(userEntity).isEmpty() || Optional.ofNullable(adEntity).isEmpty()) {
+        if (ObjectUtils.anyNull(userEntity, adEntity)) {
             return null;
-        } else {
-            return new CommentEntity()
-                    .setAuthor(userEntity)
-                    .setAdEntity(adEntity)
-                    .setCreatedAt(date.getTime())
-                    .setText(createOrUpdateComment.getText());
         }
+        return new CommentEntity()
+                .setAuthor(userEntity)
+                .setAdEntity(adEntity)
+                .setCreatedAt(date.getTime())
+                .setText(createOrUpdateComment.getText());
+
     }
 
     public Comment toComment(CommentEntity commentEntity) {
+        if (ObjectUtils.anyNull(commentEntity)) {
+            return null;
+        }
         return new Comment()
                 .setAuthor(commentEntity.getAuthor().getId())
                 .setText(commentEntity.getText())
@@ -38,6 +41,9 @@ public class CommentMapper {
     }
 
     public Comments toComments(List<Comment> commentList) {
+        if (ObjectUtils.anyNull(commentList)) {
+            return null;
+        }
         return new Comments()
                 .setCount(commentList.size())
                 .setResults(commentList);

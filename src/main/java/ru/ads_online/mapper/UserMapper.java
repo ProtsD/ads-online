@@ -1,5 +1,6 @@
 package ru.ads_online.mapper;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Component;
 import ru.ads_online.pojo.dto.user.UpdateUser;
 import ru.ads_online.pojo.dto.user.User;
@@ -9,6 +10,9 @@ import ru.ads_online.pojo.dto.user.UserDetails;
 @Component
 public class UserMapper {
     public UserEntity toUserEntity(User user) {
+        if (ObjectUtils.anyNull(user)) {
+            return null;
+        }
         return new UserEntity()
                 .setId(user.getId())
                 .setUsername(user.getUsername())
@@ -20,6 +24,9 @@ public class UserMapper {
     }
 
     public User toUser(UserEntity userEntity) {
+        if (ObjectUtils.anyNull(userEntity)) {
+            return null;
+        }
         return new User()
                 .setId(userEntity.getId())
                 .setUsername(userEntity.getUsername())
@@ -31,6 +38,9 @@ public class UserMapper {
     }
 
     public UpdateUser toUpdateUser(UserEntity userEntity) {
+        if (ObjectUtils.anyNull(userEntity)) {
+            return null;
+        }
         return new UpdateUser()
                 .setFirstName(userEntity.getFirstName())
                 .setLastName(userEntity.getLastName())
@@ -38,6 +48,9 @@ public class UserMapper {
     }
 
     public UserDetails toUserDetails(UserEntity userEntity) {
+        if (ObjectUtils.anyNull(userEntity)) {
+            return null;
+        }
         return new UserDetails()
                 .setUsername(userEntity.getUsername())
                 .setPassword(userEntity.getPassword())

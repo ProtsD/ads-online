@@ -60,7 +60,7 @@ public class AdsOnlineExceptionHandler {
         return ResponseEntity.badRequest().body(errorBody);
     }
     @ExceptionHandler(MimeTypeException.class)
-    public ResponseEntity<Map<String, Object>> handleMMimeTypeException(MimeTypeException exception) {
+    public ResponseEntity<Map<String, Object>> handleMimeTypeException(MimeTypeException exception) {
         String message = exception.getMessage();
 
         Map<String, Object> errorBody = Map.of(

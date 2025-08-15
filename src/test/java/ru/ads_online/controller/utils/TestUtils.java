@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
 import net.minidev.json.JSONObject;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -223,7 +224,7 @@ public class TestUtils {
     }
 
     public static Authentication createAuthenticationTokenForUser(UserEntity user) {
-        if (user == null) {
+        if (ObjectUtils.anyNull(user)) {
             throw new IllegalArgumentException("User cannot be null for authentication");
         }
         UserPrincipal userPrincipal = new UserPrincipal(user);
@@ -232,7 +233,7 @@ public class TestUtils {
     }
 
     public static <T> T findDistinctElement(List<T> list, T object) {
-        if (list == null || object == null) {
+        if (ObjectUtils.anyNull(list, object)) {
             throw new IllegalArgumentException("List and object must not be null.");
         }
         if (list.isEmpty()) {

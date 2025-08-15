@@ -2,6 +2,7 @@ package ru.ads_online.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.tika.mime.MimeTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -49,7 +50,7 @@ public class AdServiceImpl implements AdService {
     public Ad addAd(UserPrincipal userDetails, CreateOrUpdateAd adBody, MultipartFile image) throws MimeTypeException {
         UserEntity author = userDetails.getUser();
 
-        if (image == null || image.isEmpty()) {
+        if (ObjectUtils.anyNull(image) || image.isEmpty()) {
             String message = "No image provided for ad titled";
             log.warn(message);
             throw new ImageUploadException(message);
@@ -144,7 +145,7 @@ public class AdServiceImpl implements AdService {
         try {
             byte[] imageBytes = image.getBytes();
             ImageEntity imageEntity = imageService.uploadImage(imageBytes);
-            if (imageEntity == null) {
+            if (ObjectUtils.anyNull(imageEntity)) {
                 String message = "Image upload failed";
                 log.warn(message);
                 throw new ImageUploadException(message);

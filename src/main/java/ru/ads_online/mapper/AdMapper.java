@@ -1,5 +1,6 @@
 package ru.ads_online.mapper;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Component;
 import ru.ads_online.pojo.dto.ad.Ad;
 import ru.ads_online.pojo.dto.ad.Ads;
@@ -13,7 +14,7 @@ import java.util.List;
 public class AdMapper {
 
     public AdEntity toAdEntity(CreateOrUpdateAd createOrUpdateAd) {
-        if (createOrUpdateAd == null) {
+        if (ObjectUtils.anyNull(createOrUpdateAd)) {
             return null;
         }
 
@@ -24,7 +25,7 @@ public class AdMapper {
     }
 
     public Ad toAd(AdEntity adEntity) {
-        if (adEntity == null) {
+        if (ObjectUtils.anyNull(adEntity)) {
             return null;
         }
 
@@ -37,7 +38,7 @@ public class AdMapper {
     }
 
     public ExtendedAd toExtendedAd(AdEntity adEntity) {
-        if (adEntity == null) {
+        if (ObjectUtils.anyNull(adEntity)) {
             return null;
         }
 
@@ -54,7 +55,7 @@ public class AdMapper {
     }
 
     public Ads toAds(List<AdEntity> adList) {
-        if (adList == null) {
+        if (ObjectUtils.anyNull(adList)) {
             return null;
         }
         List<Ad> adResults = adList.stream()

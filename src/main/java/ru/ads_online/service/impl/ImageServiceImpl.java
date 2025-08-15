@@ -2,6 +2,7 @@ package ru.ads_online.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +37,7 @@ public class ImageServiceImpl implements ImageService {
     @Override
     public ImageEntity uploadImage(byte[] image) {
 
-        if (image == null || image.length == 0) {
+        if (ObjectUtils.anyNull(image) || image.length == 0) {
             String message = "No image provided or empty image data";
             log.warn(message);
             throw new ImageUploadException(message);
