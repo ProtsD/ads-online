@@ -1,0 +1,639 @@
+openapi: 3.0.3
+info:
+  title: API Documentation
+  version: '1.0'
+servers:
+  - url: http://localhost:8080
+paths:
+  /users/set_password:
+    post:
+      tags:
+        - Users
+      summary: 'Password update'
+      operationId: setPassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewPassword'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: 'Get information about the authorized user'
+      operationId: getUser
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: OK
+        '401':
+          description: Unauthorized
+    patch:
+      tags:
+        - Users
+      summary: 'Update information about the authorized user'
+      operationId: updateUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUser'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateUser'
+        '401':
+          description: Unauthorized
+  /users/me/image:
+    patch:
+      tags:
+        - Users
+      summary: 'Update the avatar of the authorized user'
+      operationId: updateUserImage
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - image
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+
+  /register:
+    post:
+      tags:
+        - Sign-up
+      summary: 'User sign-up'
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+  /login:
+    post:
+      tags:
+        - Authorization
+      summary: 'User authorization'
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+  /ads:
+    get:
+      tags:
+        - Advertisements
+      operationId: getAllAds
+      summary: 'Get all advertisements'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ads'
+    post:
+      tags:
+        - Advertisements
+      summary: 'Post an advertisement'
+      operationId: addAd
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - image
+                - properties
+              type: object
+              properties:
+                properties:
+                  $ref: '#/components/schemas/CreateOrUpdateAd'
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ad'
+        '401':
+          description: Unauthorized
+  /ads/{id}/comments:
+    get:
+      tags:
+        - Comments
+      summary: 'Get comments for the advertisement'
+      operationId: getComments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comments'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+
+    post:
+      tags:
+        - Comments
+      summary: 'Add a comment to the announcement'
+      operationId: addComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrUpdateComment'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+
+  /ads/{id}:
+    get:
+      tags:
+        - Advertisements
+      summary: 'Get information on the advertisement'
+      operationId: getAds
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtendedAd'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+    delete:
+      tags:
+        - Advertisements
+      summary: 'Delete the advertisement'
+      operationId: removeAd
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+    patch:
+      tags:
+        - Advertisements
+      summary: 'Update details of the advertisement'
+      operationId: updateAds
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrUpdateAd'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ad'
+        '403':
+          description: Forbidden
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+  /ads/{adId}/comments/{commentId}:
+    delete:
+      tags:
+        - Comments
+      summary: 'Update the comment'
+      operationId: deleteComment
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: OK
+        '403':
+          description: Forbidden
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+    patch:
+      tags:
+        - Comments
+      summary: 'Updating the comment'
+      operationId: updateComment
+      parameters:
+        - name: adId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrUpdateComment'
+      responses:
+        '200':
+          description: OK
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '403':
+          description: Forbidden
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+
+  /ads/me:
+    get:
+      tags:
+        - Advertisements
+      summary: 'Get advertisements of the authorized user'
+      operationId: getAdsMe
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ads'
+          description: OK
+        '401':
+          description: Unauthorized
+  /ads/{id}/image:
+    patch:
+      tags:
+        - Advertisements
+      summary: 'Update the image of the advertisement'
+      operationId: updateImage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - image
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: byte
+        '403':
+          description: Forbidden
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not found
+
+components:
+  schemas:
+    NewPassword:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          description: 'current password'
+          minLength: 8
+          maxLength: 16
+        newPassword:
+          type: string
+          description: 'new password'
+          minLength: 8
+          maxLength: 16
+    Register:
+      type: object
+      properties:
+        username:
+          type: string
+          description: 'login'
+          minLength: 4
+          maxLength: 32
+        password:
+          type: string
+          description: 'password'
+          minLength: 8
+          maxLength: 16
+        firstName:
+          type: string
+          description: 'user name'
+          minLength: 2
+          maxLength: 16
+        lastName:
+          type: string
+          description: 'user surname'
+          minLength: 2
+          maxLength: 16
+        phone:
+          type: string
+          description: 'user phone number'
+          pattern: '\+7\s?\(?\d{3}\)?\s?\d{3}-?\d{2}-?\d{2}'
+        role:
+          type: string
+          description: 'user role'
+          enum:
+            - USER
+            - ADMIN
+    Login:
+      type: object
+      properties:
+        password:
+          type: string
+          description: 'password'
+          minLength: 8
+          maxLength: 16
+        username:
+          type: string
+          description: 'login'
+          minLength: 4
+          maxLength: 32
+    CreateOrUpdateAd:
+      type: object
+      properties:
+        title:
+          type: string
+          description: 'header of the advertisement'
+          minLength: 4
+          maxLength: 32
+        price:
+          type: integer
+          format: int32
+          description: 'price of the advertisement'
+          minimum: 0
+          maximum: 10000000
+        description:
+          type: string
+          description: 'Description of the advertisement'
+          minLength: 8
+          maxLength: 64
+    CreateOrUpdateComment:
+      required:
+        - text
+      type: object
+      properties:
+        text:
+          type: string
+          description: 'comment text'
+          minLength: 8
+          maxLength: 64
+    Ad:
+      type: object
+      properties:
+        author:
+          type: integer
+          format: int32
+          description: 'author id of the advertisement'
+        image:
+          type: string
+          description: 'link to the advertisement image'
+        pk:
+          type: integer
+          format: int32
+          description: 'advertisement id'
+        price:
+          type: integer
+          format: int32
+          description: 'price of the advertisement'
+        title:
+          type: string
+          description: 'header of the advertisement'
+    Comment:
+      type: object
+      properties:
+        author:
+          type: integer
+          format: int32
+          description: 'author id of the advertisement'
+        authorImage:
+          type: string
+          description: 'link to the avatar of the comment author'
+        authorFirstName:
+          type: string
+          description: 'name of the comment author'
+        createdAt:
+          type: integer
+          format: int64
+          description: 'Date and time of comment creation in milliseconds since 00:00:00 01.01.1970'
+        pk:
+          type: integer
+          format: int32
+          description: 'comment id'
+        text:
+          type: string
+          description: 'comment text'
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: 'user id'
+        email:
+          type: string
+          description: 'user login'
+        firstName:
+          type: string
+          description: 'user name'
+        lastName:
+          type: string
+          description: 'user surname'
+        phone:
+          type: string
+          description: 'user phone number'
+        role:
+          type: string
+          description: 'user role'
+          enum:
+            - USER
+            - ADMIN
+        image:
+          type: string
+          description: 'link to the user avatar'
+    UpdateUser:
+      type: object
+      properties:
+        firstName:
+          type: string
+          description: 'user name'
+          minLength: 3
+          maxLength: 10
+        lastName:
+          type: string
+          description: 'user surname'
+          minLength: 3
+          maxLength: 10
+        phone:
+          type: string
+          description: 'user phone number'
+          pattern: '\+7\s?\(?\d{3}\)?\s?\d{3}-?\d{2}-?\d{2}'
+    Ads:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+          description: 'total number of advertisements'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ad'
+    ExtendedAd:
+      type: object
+      properties:
+        pk:
+          type: integer
+          format: int32
+          description: 'advertisement id'
+        authorFirstName:
+          type: string
+          description: 'name of the advertisement author'
+        authorLastName:
+          type: string
+          description: 'surname of the advertisement author'
+        description:
+          type: string
+          description: 'advertisement description'
+        email:
+          type: string
+          description: 'login of the advertisement author'
+        image:
+          type: string
+          description: 'link to the advertisement image'
+        phone:
+          type: string
+          description: 'author phone number'
+        price:
+          type: integer
+          format: int32
+          description: 'price of the advertisement'
+        title:
+          type: string
+          description: 'header of the advertisement'
+    Comments:
+      type: object
+      properties:
+        count:
+          type: integer
+          format: int32
+          description: 'total number of advertisements'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'

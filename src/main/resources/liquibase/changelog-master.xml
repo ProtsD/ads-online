@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
+    <changeSet id="changelog-master 001" author="RUPROTSD"/>
+    <include file="liquibase/changesets/241021_create_user_tbl.xml"/>
+    <include file="liquibase/changesets/241021_create_ad_tbl.xml"/>
+    <include file="liquibase/changesets/241021_create_comment_tbl.xml"/>
+    <include file="liquibase/changesets/241021_create_image_tbl.xml"/>
+</databaseChangeLog>

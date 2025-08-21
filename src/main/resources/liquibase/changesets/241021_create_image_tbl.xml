@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.9.xsd">
+    <changeSet id="create_table_image_tbl" author="RUPROTSD">
+        <preConditions>
+
+            <not>
+                <tableExists tableName="image"/>
+            </not>
+
+        </preConditions>
+
+        <createTable tableName="image">
+
+            <column name="id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="image" type="oid">
+                <constraints nullable="false"/>
+            </column>
+
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="image"/>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>
